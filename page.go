@@ -1,5 +1,7 @@
 package main
 
+import "html/template"
+
 var page = []byte(`
 <!DOCTYPE html>
 <html>
@@ -13,10 +15,14 @@ var page = []byte(`
 		a, a:visited   { color: blue; }
 		h1, h2, h3, h4 { line-height:1.2em; }
 		label          { display: block; font-weight: bold; font-size: 80%; }
-		input          { padding: .2em .62em; font-size: 100% }
-		.row           { clear: both }
-		.col           { width: 50%; float: left }
-
+		input, button  { padding: .2em .62em; font-size: 100% }
+		p              { margin: 0 0 0.22em 0; }
+		p.details      { font-size: smaller; }
+		section		   { margin-bottom: 1em }
+		.record        { border-bottom: 1px dashed #000; margin:0; padding: 0.5em ;}
+		.record:hover  { background-color: #f0f0f0; }
+		.xmlRecord     { display: block; float: right; font-variant: small-caps }
+		.collections span+span:before,.subjects span+span:before { content: ' | '}
 		@media print { body { max-width:none } }
 	</style>
 </head>
@@ -25,53 +31,27 @@ var page = []byte(`
 		<header>
 			<h1>Otra</h1>
 		</header>
-		<section class="row">
-			<div class="col">
-				<datalist id="indexes">
-					<option>agent</option>
-					<option>author</option>
-					<option>collection</option>
-					<option>editor</option>
-					<option>illustrator</option>
-					<option>isbn</option>
-					<option>subject</option>
-					<option>title</option>
-					<option>translator</option>
-					<option>year</option>
-				</datalist>
-				<datalist id="hits"></datalist>
-				<label>Index</label>
-				<input id="index" type="text" list="indexes" />
-			</div>
-			<div class="col">
-				<label>Query</label>
-				<input id="query" type="text" list="hits" />
-			</div>
-		</section>
 		<section>
+			<form id="searchForm">
+				<input id="search" type="text" autocomplete="off" /> <button id="searchButton" type="submit">Søk</button>
+			</form>
+		</section>
+		<section id="hits">
 		</section>
 	</article>
 	<script>
-		function keyPressed(event) {
-			var index = document.getElementById('index').value
-			var query = document.getElementById('query').value
-			if (index == '' || query === '') {
-				return
-			}
+		function doSearch(event) {
+			event.preventDefault()
+			var parts = document.getElementById('search').value.split('/')
+			var index = parts[0]
+			var query = parts[1]
+
 			var req = new XMLHttpRequest()
-			req.open('GET', '/autocomplete/'+index+'/'+query, true)
-			req.onload = function() {
+			req.open('GET', '/query/'+index+'/'+query, true)
+			req.onload = function(resp) {
 				if (req.status >= 200 && req.status < 400) {
-					var hits = req.responseText.split('\n')
-					var hitsList = document.getElementById('hits')
-					while (hitsList.firstChild) {
-					    hitsList.removeChild(hitsList.firstChild)
-					}
-					hits.forEach(function(hit) {
-						var option = document.createElement('option')
-				        option.value = hit;
-				        hitsList.appendChild(option);
-					})
+					document.getElementById('hits').innerHTML = req.responseText
+					history.pushState(null, null, '?q='+document.getElementById('search').value);
 				} else {
 					console.log(req.status)
 			  	}
@@ -82,10 +62,50 @@ var page = []byte(`
 			}
 			req.send()
 		}
-		var input = document.getElementById('query')
-		input.addEventListener('keyup', keyPressed)
+
+		document.getElementById('searchForm').addEventListener('submit', doSearch)
+		document.getElementById('hits').addEventListener('click', function(event) {
+			var href = event.target.getAttribute('href')
+			if (href && href.startsWith('/?q=')) {
+				console.log("here")
+				event.preventDefault()
+				document.getElementById('search').value = decodeURIComponent(href.substring(4))
+				document.getElementById('searchButton').click()
+			}
+		})
+
+		if ( window.location.search.startsWith('?q=') ) {
+			document.getElementById('search').value = decodeURIComponent(window.location.search.substring(3))
+			document.getElementById('searchButton').click()
+		}
 	</script>
 </body>
 </html>
-
 `)
+
+var hitsTmpl = template.Must(template.New("hits").Parse(`
+{{range .}}
+	<div class="record">
+		<a class="xmlRecord" target="_blank" href="/record/{{.ID}}">xml</a>
+		<p><strong>{{.Title}}</strong><br/>
+			{{if .Subtitle}}<small>{{.Subtitle}}</small>{{end}}
+		</p>
+		<p class="contributors">
+			{{range $role, $agents := .Contributors}}
+				<span>{{$role}} {{range $agents}}<a href="/?q=agent/{{.}}">{{.}}</a> {{end}}</span>
+			{{end}}
+		</p>
+		<p class="details">Utgitt av {{.Publisher}} {{.PublishedYear}}</p>
+		{{if .Collection}}
+			<p class="collections details">Serie:
+				{{range .Collection}}<span>{{.}}</span>{{end}}
+			</p>
+		{{end}}
+		{{if .Subjects}}
+			<p class="subjects details">Emner:
+				{{range .Subjects}}<span><a href="/?q=subject/{{.}}">{{.}}</a></span>{{end}}
+			</p>
+		{{end}}
+	</div>
+{{end}}
+`))

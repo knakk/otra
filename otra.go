@@ -3,20 +3,14 @@ package main
 import (
 	"encoding/xml"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/knakk/kbp/onix"
-	"github.com/knakk/kbp/onix/codes"
 	"github.com/knakk/kbp/onix/codes/list15"
-	"github.com/knakk/kbp/onix/codes/list150"
 	"github.com/knakk/kbp/onix/codes/list163"
-	"github.com/knakk/kbp/onix/codes/list17"
-	"github.com/knakk/kbp/onix/codes/list22"
 	"github.com/knakk/kbp/onix/codes/list5"
-	"github.com/knakk/kbp/onix/codes/list74"
 	"github.com/knakk/otra/db"
 )
 
@@ -186,100 +180,5 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 		}
 	}
 
-	return res
-}
-
-type Contrib struct {
-	Role  string
-	Agent string
-}
-
-type Result struct {
-	Contributors     []Contrib
-	Collection       []string
-	Subjects         []string
-	Title            string
-	Subtitle         string
-	OriginalTitle    string
-	Language         string
-	OriginalLanguage string
-	ISBN             string
-	Format           string
-	Publisher        string
-	PublishedYear    string
-}
-
-func extractRes(p *onix.Product) (res Result) {
-	for _, id := range p.ProductIdentifier {
-		if id.ProductIDType.Value == list5.ISBN13 {
-			res.ISBN = id.IDValue.Value
-		}
-	}
-	res.Format = list150.MustItem(p.DescriptiveDetail.ProductForm.Value, codes.Norwegian).Label
-	for _, c := range p.DescriptiveDetail.Collection {
-		for _, t := range c.TitleDetail {
-			for _, tt := range t.TitleElement {
-				if tt.TitleText != nil {
-					res.Collection = append(res.Collection, tt.TitleText.Value)
-				}
-			}
-		}
-	}
-
-	for _, t := range p.DescriptiveDetail.TitleDetail {
-		if t.TitleType.Value == list15.DistinctiveTitleBookCoverTitleSerialTitleOnItemSerialContentItemOrReviewedResource {
-			res.Title = t.TitleElement[0].TitleText.Value
-			if t.TitleElement[0].Subtitle != nil {
-				res.Subtitle = t.TitleElement[0].Subtitle.Value
-			}
-		}
-		if t.TitleType.Value == list15.TitleInOriginalLanguage {
-			res.OriginalTitle = t.TitleElement[0].TitleText.Value
-			if t.TitleElement[0].Subtitle != nil {
-				res.OriginalTitle = fmt.Sprintf("%s : %s", res.OriginalTitle, t.TitleElement[0].Subtitle.Value)
-			}
-		}
-	}
-
-	for _, l := range p.DescriptiveDetail.Language {
-		if l.LanguageRole.Value == list22.LanguageOfText {
-			res.Language = list74.MustItem(l.LanguageCode.Value, codes.Norwegian).Label
-		} else if l.LanguageRole.Value == list22.OriginalLanguageOfATranslatedText {
-			res.OriginalLanguage = list74.MustItem(l.LanguageCode.Value, codes.Norwegian).Label
-		}
-	}
-
-	for _, p := range p.PublishingDetail.Publisher {
-		res.Publisher = p.PublisherName.Value
-		break
-	}
-	for _, d := range p.PublishingDetail.PublishingDate {
-		if d.PublishingDateRole.Value == list163.PublicationDate {
-			res.PublishedYear = d.Date.Value
-			break
-		}
-		// TODO list163.DateOfFirstPublication ?
-	}
-
-	for _, s := range p.DescriptiveDetail.Subject {
-		for _, st := range s.SubjectHeadingText {
-			res.Subjects = append(res.Subjects, st.Value)
-		}
-	}
-
-	for _, c := range p.DescriptiveDetail.Contributor {
-		for _, role := range c.ContributorRole {
-			contrib := Contrib{
-				Role: list17.MustItem(role.Value, codes.Norwegian).Label,
-			}
-			if c.PersonNameInverted != nil {
-				contrib.Agent = c.PersonNameInverted.Value
-			} else if c.PersonName != nil {
-				contrib.Agent = c.PersonName.Value
-			}
-			res.Contributors = append(res.Contributors, contrib)
-		}
-
-	}
 	return res
 }
