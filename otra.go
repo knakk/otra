@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/knakk/kbp/onix"
@@ -32,11 +33,11 @@ func main() {
 	listenAdr := flag.String("l", ":8765", "listening address")
 	flag.Parse()
 
-	db, err := db.Open(*dbFile, indexFn)
+	otraDB, err := db.Open(*dbFile, indexFn)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
+	defer otraDB.Close()
 
 	if *loadFile != "" {
 		log.Printf("Attempting to parse onix product file")
@@ -52,7 +53,7 @@ func main() {
 
 		log.Printf("Loading %d onix products into db", len(products.Product))
 		for _, p := range products.Product {
-			if _, err := db.Store(p); err != nil {
+			if _, err := otraDB.Store(p); err != nil {
 				log.Fatal(err)
 			}
 		}
@@ -65,7 +66,7 @@ func main() {
 			return
 		}
 
-		hits, err := db.Scan(paths[2], paths[3], 10)
+		hits, err := otraDB.Scan(paths[2], paths[3], 10)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -88,7 +89,7 @@ func main() {
 			return
 		}
 
-		ids, err := db.Query(paths[2], paths[3], 10)
+		ids, err := otraDB.Query(paths[2], paths[3], 10)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -96,7 +97,7 @@ func main() {
 
 		var hits []Result
 		for _, id := range ids {
-			p, err := db.Get(id)
+			p, err := otraDB.Get(id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -105,6 +106,29 @@ func main() {
 		}
 
 		if err := json.NewEncoder(w).Encode(&hits); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
+	http.HandleFunc("/record/", func(w http.ResponseWriter, r *http.Request) {
+		paths := strings.Split(r.URL.Path, "/")
+		if len(paths) != 3 || paths[2] == "" {
+			http.Error(w, "usage: /record/:id", http.StatusBadRequest)
+			return
+		}
+		n, err := strconv.Atoi(paths[2])
+		if err != nil {
+			http.Error(w, "usage: /record/:id", http.StatusBadRequest)
+			return
+		}
+		rec, err := otraDB.Get(uint32(n))
+		if err == db.ErrNotFound {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/xml")
+		if err := xml.NewEncoder(w).Encode(&rec); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})

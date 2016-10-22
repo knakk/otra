@@ -6,7 +6,7 @@ var page = []byte(`
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Library Gutenberg</title>
+	<title>Otra</title>
 	<style>
 		*              { box-sizing: border-box }
 		body           { margin:1em auto; max-width:40em; padding: 0 .62em; font:1.2em/1.62em sans-serif; }
