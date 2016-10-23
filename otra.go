@@ -53,6 +53,7 @@ func main() {
 	http.Handle("/autocomplete/", scanHandler(otraDB))
 	http.Handle("/query/", queryHandler(otraDB))
 	http.Handle("/record/", recordHandler(otraDB))
+	http.Handle("/indexes", indexHandler(otraDB))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(page); err != nil {
@@ -78,7 +79,7 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 			for _, tt := range t.TitleElement {
 				if tt.TitleText != nil {
 					res = append(res, db.IndexEntry{
-						Index: "collection",
+						Index: "series",
 						Term:  tt.TitleText.Value,
 					})
 				}
@@ -164,7 +165,7 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 			switch role.Value {
 			case "A01":
 				roleIndex = "author"
-			case "A112":
+			case "A12":
 				roleIndex = "illustrator"
 			case "B01":
 				roleIndex = "editor"

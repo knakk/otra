@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"net/http"
@@ -44,6 +45,17 @@ func recordHandler(otraDB *db.DB) http.Handler {
 	})
 }
 
+func indexHandler(otraDB *db.DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		indexes := otraDB.Indexes()
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(&indexes); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+}
+
 func queryHandler(otraDB *db.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		paths := strings.Split(r.URL.Path, "/")
@@ -68,6 +80,7 @@ func queryHandler(otraDB *db.DB) http.Handler {
 			hits = append(hits, extractRes(p, id))
 		}
 
+		w.Header().Set("Content-Type", "text/html")
 		if err := hitsTmpl.Execute(w, hits); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -87,8 +100,9 @@ func scanHandler(otraDB *db.DB) http.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		for _, hit := range hits {
-			fmt.Fprintln(w, hit)
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(&hits); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
 }
