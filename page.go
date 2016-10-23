@@ -41,7 +41,7 @@ var page = []byte(`
 	</article>
 	<script>
 		function doSearch(event) {
-			event.preventDefault()
+			var q = document.getElementById('search').value
 			var parts = document.getElementById('search').value.split('/')
 			var index = parts[0]
 			var query = parts[1]
@@ -51,23 +51,28 @@ var page = []byte(`
 			req.onload = function(resp) {
 				if (req.status >= 200 && req.status < 400) {
 					document.getElementById('hits').innerHTML = req.responseText
-					history.pushState(null, null, '?q='+document.getElementById('search').value);
+					if ( '?q='+q !== document.location.search) {
+						// TODO understand why this check is needed to avoid double history entries
+						history.pushState(q, null, '/?q='+q)
+					}
 				} else {
 					console.log(req.status)
 			  	}
+				return true
 			}
 
 			req.onerror = function() {
 				console.log("connection error")
 			}
 			req.send()
+
+			return event.preventDefault()
 		}
 
 		document.getElementById('searchForm').addEventListener('submit', doSearch)
 		document.getElementById('hits').addEventListener('click', function(event) {
 			var href = event.target.getAttribute('href')
 			if (href && href.startsWith('/?q=')) {
-				console.log("here")
 				event.preventDefault()
 				document.getElementById('search').value = decodeURIComponent(href.substring(4))
 				document.getElementById('searchButton').click()
@@ -78,6 +83,17 @@ var page = []byte(`
 			document.getElementById('search').value = decodeURIComponent(window.location.search.substring(3))
 			document.getElementById('searchButton').click()
 		}
+
+		history.replaceState(document.getElementById('search').value, null, document.location.href);
+
+		window.addEventListener('popstate', function(event) {
+			if (!event.state || event.state === document.getElementById('search').value) {
+				return
+			}
+			document.getElementById('search').value = event.state
+			document.getElementById('searchButton').click()
+		})
+
 	</script>
 </body>
 </html>
