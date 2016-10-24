@@ -200,7 +200,6 @@ func (db *DB) Scan(index, start string, limit int) (res []string, err error) {
 // Query performs a query against the given index, returning up to limit matching
 // record IDs.
 func (db *DB) Query(index, query string, limit int) (res []uint32, err error) {
-	// TODO limit is not used
 	err = db.kv.View(func(tx *bolt.Tx) error {
 		bkt := tx.Bucket([]byte("indexes")).Bucket([]byte(index))
 		if bkt == nil {
@@ -217,6 +216,9 @@ func (db *DB) Query(index, query string, limit int) (res []uint32, err error) {
 			return err
 		}
 		res = hits.ToArray()
+		if len(res) > limit {
+			res = res[:limit]
+		}
 
 		return nil
 	})
