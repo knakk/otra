@@ -192,7 +192,7 @@ var hitsTmpl = template.Must(template.New("hits").Parse(`
 				<span>{{$role}} {{range $agents}}<a href="/?q=agent/{{.}}">{{.}}</a> {{end}}</span>
 			{{end}}
 		</p>
-		<p class="details">Utgitt av {{.Publisher}} {{.PublishedYear}}</p>
+		<p class="details">Utgitt av {{.Publisher}} <a href="/?q=year/{{.PublishedYear}}">{{.PublishedYear}}</a></p>
 		{{if .Collection}}
 			<p class="collections details">Serie:
 				{{range .Collection}}<span><a href="/?q=series/{{.}}">{{.}}</a></span>{{end}}
