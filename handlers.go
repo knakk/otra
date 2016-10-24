@@ -60,7 +60,7 @@ func queryHandler(otraDB *db.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		paths := strings.Split(r.URL.Path, "/")
 		if len(paths) != 4 || paths[3] == "" {
-			http.Error(w, "usage: /query/index/query", http.StatusBadRequest)
+			http.Error(w, "usage: /query/:index/:query", http.StatusBadRequest)
 			return
 		}
 
@@ -91,7 +91,7 @@ func scanHandler(otraDB *db.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		paths := strings.Split(r.URL.Path, "/")
 		if len(paths) != 4 || paths[3] == "" {
-			http.Error(w, "usage: /autocomplete/index/query", http.StatusBadRequest)
+			http.Error(w, "usage: /autocomplete/:index/:query", http.StatusBadRequest)
 			return
 		}
 
