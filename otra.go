@@ -169,12 +169,22 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 			switch role.Value {
 			case "A01":
 				roleIndex = "author"
+			case "A06":
+				roleIndex = "composer"
+			case "A09":
+				roleIndex = "creator"
 			case "A12":
 				roleIndex = "illustrator"
+			case "A32":
+				roleIndex = "contributor"
+			case "A38":
+				roleIndex = "originalauthor"
 			case "B01":
 				roleIndex = "editor"
 			case "B06":
 				roleIndex = "translator"
+			case "E07":
+				roleIndex = "reader"
 			default:
 				roleIndex = "role" + role.Value
 			}
