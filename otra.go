@@ -156,6 +156,10 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 				agent = c.PersonNameInverted.Value
 			} else if c.PersonName != nil {
 				agent = c.PersonName.Value
+			} else if c.CorporateName != nil {
+				agent = c.CorporateName.Value
+			} else if c.CorporateNameInverted != nil {
+				agent = c.CorporateNameInverted.Value
 			}
 			res = append(res, db.IndexEntry{
 				Index: "agent",

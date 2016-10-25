@@ -200,6 +200,10 @@ func extractRes(p *onix.Product, id uint32) (hit Hit) {
 				agentName = c.PersonNameInverted.Value
 			} else if c.PersonName != nil {
 				agentName = c.PersonName.Value
+			} else if c.CorporateName != nil {
+				agentName = c.CorporateName.Value
+			} else if c.CorporateNameInverted != nil {
+				agentName = c.CorporateNameInverted.Value
 			}
 			hit.Contributors[roleLabel] = append(hit.Contributors[roleLabel], agentName)
 		}
