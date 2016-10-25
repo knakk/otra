@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/knakk/kbp/onix"
+	"github.com/knakk/kbp/onix/codes/list1"
 	"github.com/knakk/kbp/onix/codes/list15"
 	"github.com/knakk/kbp/onix/codes/list163"
 	"github.com/knakk/kbp/onix/codes/list5"
@@ -44,6 +45,16 @@ func main() {
 
 		log.Printf("Loading %d onix products into db", len(products.Product))
 		for _, p := range products.Product {
+			switch p.NotificationType.Value {
+			case list1.AdvanceNotificationConfirmed, list1.NotificationConfirmedOnPublication:
+				// OK store and index
+			case list1.Delete:
+				log.Println("TODO handle delete notifications")
+				continue
+			default:
+				log.Printf("TODO handle notification: %v", p.NotificationType.Value)
+				continue
+			}
 			if _, err := otraDB.Store(p); err != nil {
 				log.Fatal(err)
 			}
