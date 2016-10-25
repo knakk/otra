@@ -113,7 +113,7 @@ type Result struct {
 	Collection       []string
 	Subjects         []string
 	Title            string
-	Subtitle         string
+	Subtitles        []string
 	OriginalTitle    string
 	Language         string
 	OriginalLanguage string
@@ -145,7 +145,7 @@ func extractRes(p *onix.Product, id uint32) (res Result) {
 		if t.TitleType.Value == list15.DistinctiveTitleBookCoverTitleSerialTitleOnItemSerialContentItemOrReviewedResource {
 			res.Title = t.TitleElement[0].TitleText.Value
 			if t.TitleElement[0].Subtitle != nil {
-				res.Subtitle = t.TitleElement[0].Subtitle.Value
+				res.Subtitles = append(res.Subtitles, t.TitleElement[0].Subtitle.Value)
 			}
 		}
 		if t.TitleType.Value == list15.TitleInOriginalLanguage {

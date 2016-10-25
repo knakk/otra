@@ -15,6 +15,7 @@ var page = []byte(`
 		a, a:visited   { color: blue; }
 		h1, h2, h3, h4 { line-height:1.2em; }
 		label          { display: block; font-weight: bold; font-size: 80%; }
+		input          { width: 60% }
 		input, button  { padding: .2em .62em; font-size: 100% }
 		.relative      { position: relative }
 		.hidden        { display: none }
@@ -25,6 +26,7 @@ var page = []byte(`
 		.record:hover  { background-color: #f0f0f0; }
 		.xmlRecord     { display: block; float: right; font-variant: small-caps }
 		.collections span+span:before,.subjects span+span:before { content: ' | '}
+		.subtitles small+small:before { content: ' : '}
 
 		@media print { body { max-width:none } }
 	</style>
@@ -185,7 +187,7 @@ var hitsTmpl = template.Must(template.New("hits").Parse(`
 	<div class="record">
 		<a class="xmlRecord" target="_blank" href="/record/{{.ID}}">xml</a>
 		<p><strong>{{.Title}}</strong><br/>
-			{{if .Subtitle}}<small>{{.Subtitle}}</small>{{end}}
+			<span class="subtitles">{{range .Subtitles}}<small>{{.}}</small>{{end}}</span>
 		</p>
 		<p class="contributors">
 			{{range $role, $agents := .Contributors}}
