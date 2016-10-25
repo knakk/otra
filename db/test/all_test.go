@@ -304,11 +304,11 @@ func TestAll(t *testing.T) {
 			t.Errorf("db.Scan(%s, %s, 10) => %v; want %v", test.idx, test.q, scans, test.scans)
 		}
 
-		ids, err := db.Query(test.idx, test.q, 10)
+		n, ids, err := db.Query(test.idx, test.q, 10)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(ids, test.products) {
+		if n != len(test.products) || !reflect.DeepEqual(ids, test.products) {
 			t.Errorf("db.Query(%s, %s, 10) => %v; want %v", test.idx, test.q, ids, test.products)
 		}
 	}

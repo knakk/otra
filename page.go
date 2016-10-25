@@ -183,7 +183,8 @@ var page = []byte(`
 `)
 
 var hitsTmpl = template.Must(template.New("hits").Parse(`
-{{range .}}
+<h4>{{.Total}} hits ({{.Took}}ms)</h4>
+{{range .Hits}}
 	<div class="record">
 		<a class="xmlRecord" target="_blank" href="/record/{{.ID}}">xml</a>
 		<p><strong>{{.Title}}</strong><br/>

@@ -198,8 +198,8 @@ func (db *DB) Scan(index, start string, limit int) (res []string, err error) {
 }
 
 // Query performs a query against the given index, returning up to limit matching
-// record IDs.
-func (db *DB) Query(index, query string, limit int) (res []uint32, err error) {
+// record IDs, as well as a count of total hits..
+func (db *DB) Query(index, query string, limit int) (total int, res []uint32, err error) {
 	err = db.kv.View(func(tx *bolt.Tx) error {
 		bkt := tx.Bucket([]byte("indexes")).Bucket([]byte(index))
 		if bkt == nil {
@@ -216,13 +216,14 @@ func (db *DB) Query(index, query string, limit int) (res []uint32, err error) {
 			return err
 		}
 		res = hits.ToArray()
+		total = len(res)
 		if len(res) > limit {
 			res = res[:limit]
 		}
 
 		return nil
 	})
-	return res, err
+	return total, res, err
 }
 
 // func (db *DB) DeleteIndex(index string) error

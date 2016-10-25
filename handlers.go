@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/knakk/kbp/onix"
 	"github.com/knakk/kbp/onix/codes"
@@ -64,24 +65,26 @@ func queryHandler(otraDB *db.DB) http.Handler {
 			return
 		}
 
-		ids, err := otraDB.Query(paths[2], paths[3], 10)
+		start := time.Now()
+		total, ids, err := otraDB.Query(paths[2], paths[3], 10)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		var hits []Result
+		results := searchResults{Total: total}
 		for _, id := range ids {
 			p, err := otraDB.Get(id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			hits = append(hits, extractRes(p, id))
+			results.Hits = append(results.Hits, extractRes(p, id))
 		}
+		results.Took = strconv.FormatFloat(time.Since(start).Seconds()*1000, 'f', 1, 64)
 
 		w.Header().Set("Content-Type", "text/html")
-		if err := hitsTmpl.Execute(w, hits); err != nil {
+		if err := hitsTmpl.Execute(w, results); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
@@ -107,7 +110,13 @@ func scanHandler(otraDB *db.DB) http.Handler {
 	})
 }
 
-type Result struct {
+type searchResults struct {
+	Hits  []Hit
+	Total int
+	Took  string
+}
+
+type Hit struct {
 	ID               string
 	Contributors     map[string][]string
 	Collection       []string
@@ -123,19 +132,19 @@ type Result struct {
 	PublishedYear    string
 }
 
-func extractRes(p *onix.Product, id uint32) (res Result) {
-	res.ID = strconv.Itoa(int(id))
+func extractRes(p *onix.Product, id uint32) (hit Hit) {
+	hit.ID = strconv.Itoa(int(id))
 	for _, id := range p.ProductIdentifier {
 		if id.ProductIDType.Value == list5.ISBN13 {
-			res.ISBN = id.IDValue.Value
+			hit.ISBN = id.IDValue.Value
 		}
 	}
-	res.Format = list150.MustItem(p.DescriptiveDetail.ProductForm.Value, codes.Norwegian).Label
+	hit.Format = list150.MustItem(p.DescriptiveDetail.ProductForm.Value, codes.Norwegian).Label
 	for _, c := range p.DescriptiveDetail.Collection {
 		for _, t := range c.TitleDetail {
 			for _, tt := range t.TitleElement {
 				if tt.TitleText != nil {
-					res.Collection = append(res.Collection, tt.TitleText.Value)
+					hit.Collection = append(hit.Collection, tt.TitleText.Value)
 				}
 			}
 		}
@@ -143,34 +152,34 @@ func extractRes(p *onix.Product, id uint32) (res Result) {
 
 	for _, t := range p.DescriptiveDetail.TitleDetail {
 		if t.TitleType.Value == list15.DistinctiveTitleBookCoverTitleSerialTitleOnItemSerialContentItemOrReviewedResource {
-			res.Title = t.TitleElement[0].TitleText.Value
+			hit.Title = t.TitleElement[0].TitleText.Value
 			if t.TitleElement[0].Subtitle != nil {
-				res.Subtitles = append(res.Subtitles, t.TitleElement[0].Subtitle.Value)
+				hit.Subtitles = append(hit.Subtitles, t.TitleElement[0].Subtitle.Value)
 			}
 		}
 		if t.TitleType.Value == list15.TitleInOriginalLanguage {
-			res.OriginalTitle = t.TitleElement[0].TitleText.Value
+			hit.OriginalTitle = t.TitleElement[0].TitleText.Value
 			if t.TitleElement[0].Subtitle != nil {
-				res.OriginalTitle = fmt.Sprintf("%s : %s", res.OriginalTitle, t.TitleElement[0].Subtitle.Value)
+				hit.OriginalTitle = fmt.Sprintf("%s : %s", hit.OriginalTitle, t.TitleElement[0].Subtitle.Value)
 			}
 		}
 	}
 
 	for _, l := range p.DescriptiveDetail.Language {
 		if l.LanguageRole.Value == list22.LanguageOfText {
-			res.Language = list74.MustItem(l.LanguageCode.Value, codes.Norwegian).Label
+			hit.Language = list74.MustItem(l.LanguageCode.Value, codes.Norwegian).Label
 		} else if l.LanguageRole.Value == list22.OriginalLanguageOfATranslatedText {
-			res.OriginalLanguage = list74.MustItem(l.LanguageCode.Value, codes.Norwegian).Label
+			hit.OriginalLanguage = list74.MustItem(l.LanguageCode.Value, codes.Norwegian).Label
 		}
 	}
 
 	for _, p := range p.PublishingDetail.Publisher {
-		res.Publisher = p.PublisherName.Value
+		hit.Publisher = p.PublisherName.Value
 		break
 	}
 	for _, d := range p.PublishingDetail.PublishingDate {
 		if d.PublishingDateRole.Value == list163.PublicationDate {
-			res.PublishedYear = d.Date.Value
+			hit.PublishedYear = d.Date.Value
 			break
 		}
 		// TODO list163.DateOfFirstPublication ?
@@ -178,11 +187,11 @@ func extractRes(p *onix.Product, id uint32) (res Result) {
 
 	for _, s := range p.DescriptiveDetail.Subject {
 		for _, st := range s.SubjectHeadingText {
-			res.Subjects = append(res.Subjects, st.Value)
+			hit.Subjects = append(hit.Subjects, st.Value)
 		}
 	}
 
-	res.Contributors = make(map[string][]string)
+	hit.Contributors = make(map[string][]string)
 	for _, c := range p.DescriptiveDetail.Contributor {
 		for _, role := range c.ContributorRole {
 			roleLabel := list17.MustItem(role.Value, codes.Norwegian).Label
@@ -192,9 +201,9 @@ func extractRes(p *onix.Product, id uint32) (res Result) {
 			} else if c.PersonName != nil {
 				agentName = c.PersonName.Value
 			}
-			res.Contributors[roleLabel] = append(res.Contributors[roleLabel], agentName)
+			hit.Contributors[roleLabel] = append(hit.Contributors[roleLabel], agentName)
 		}
 
 	}
-	return res
+	return hit
 }
