@@ -118,6 +118,9 @@ func (db *DB) Store(p *onix.Product) (id uint32, err error) {
 func (db *DB) index(tx *bolt.Tx, p *onix.Product, id uint32) error {
 	entries := db.indexFn(p)
 	for _, e := range entries {
+		if e.Index == "" || e.Term == "" {
+			return fmt.Errorf("both index and term must be non-empty: Index:%q, Term:%q", e.Index, e.Term)
+		}
 		bkt, err := tx.Bucket([]byte("indexes")).CreateBucketIfNotExists([]byte(e.Index))
 		if err != nil {
 			return err
