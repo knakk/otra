@@ -146,6 +146,50 @@ var records = []byte(`
 </Products>
 `)
 
+var updatedRecord = []byte(`
+<Product>
+  <RecordReference>id.0</RecordReference>
+  <NotificationType>03</NotificationType>
+  <RecordSourceType>04</RecordSourceType>
+  <ProductIdentifier>
+    <ProductIDType>03</ProductIDType>
+    <IDValue>9780000000111</IDValue>
+  </ProductIdentifier>
+  <DescriptiveDetail>
+    <TitleDetail>
+      <TitleType>01</TitleType>
+      <TitleElement>
+        <TitleElementLevel>01</TitleElementLevel>
+        <NoPrefix></NoPrefix>
+        <TitleWithoutPrefix textcase="01">New title</TitleWithoutPrefix>
+      </TitleElement>
+    </TitleDetail>
+    <Contributor>
+      <SequenceNumber>1</SequenceNumber>
+      <ContributorRole>A01</ContributorRole>
+      <NameIdentifier>
+        <NameIDType>16</NameIDType>
+        <IDValue>0000000001</IDValue>
+      </NameIdentifier>
+      <NamesBeforeKey>Frank</NamesBeforeKey>
+      <KeyNames>Zappa</KeyNames>
+    </Contributor>
+    <NoEdition></NoEdition>
+    <Subject>
+      <SubjectSchemeIdentifier>20</SubjectSchemeIdentifier>
+      <SubjectHeadingText>Subject Monkey</SubjectHeadingText>
+    </Subject>
+  </DescriptiveDetail>
+  <PublishingDetail>
+    <Publisher>
+      <PublishingRole>01</PublishingRole>
+      <PublisherName>Knakks forlag</PublisherName>
+    </Publisher>
+    <CityOfPublication>Oslo</CityOfPublication>
+    <CountryOfPublication>NO</CountryOfPublication>
+  </PublishingDetail>
+</Product>`)
+
 func indexFn(p *onix.Product) (res []db.IndexEntry) {
 	// ISBN
 	for _, id := range p.ProductIdentifier {
@@ -251,6 +295,7 @@ func TestAll(t *testing.T) {
 		t.Fatalf("db.Indicies() => %v; want %v", got, want)
 	}
 
+	// Verify index scans and search queries
 	searchTests := []struct {
 		idx      string
 		q        string
@@ -313,6 +358,32 @@ func TestAll(t *testing.T) {
 		}
 	}
 
+	// Verify that record with same reference as stored record will not
+	// create a duplicate
+	id, err := db.Store(mustParse(updatedRecord))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != ids[0] {
+		t.Errorf("record with existing reference was given a new id")
+	}
+
+	// Verify indexes are updated with updated record
+	_, res, err := db.Query("author", "jensen", 10) // should not match
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(res, []uint32{ids[1]}) {
+		t.Error("index not updated when with product update")
+	}
+	_, res, err = db.Query("author", "zappa", 10) // should match
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(res, []uint32{ids[0]}) {
+		t.Error("index not updated when with product update")
+	}
+
 }
 
 func checked(t *testing.T, f func() error) {
@@ -327,4 +398,11 @@ func tempfile() string {
 	f.Close()
 	os.Remove(f.Name())
 	return f.Name()
+}
+
+func mustParse(b []byte) (p *onix.Product) {
+	if err := xml.Unmarshal(b, &p); err != nil {
+		panic(err)
+	}
+	return p
 }

@@ -59,7 +59,7 @@ func (db *DB) Close() error {
 func (db *DB) setup() (*DB, error) {
 	// set up required buckets
 	err := db.kv.Update(func(tx *bolt.Tx) error {
-		for _, b := range [][]byte{[]byte("products"), []byte("indexes")} {
+		for _, b := range [][]byte{[]byte("products"), []byte("indexes"), []byte("ref")} {
 			_, err := tx.CreateBucketIfNotExists(b)
 			if err != nil {
 				return err
@@ -89,17 +89,35 @@ func (db *DB) Get(id uint32) (*onix.Product, error) {
 }
 
 // Store will persist an onix.Product in the database, returning the ID it
-// was assigned.
+// was assigned. If there allready exist a prouduct with the same RecordReference,
+// it will be overwritten.
 func (db *DB) Store(p *onix.Product) (id uint32, err error) {
 	err = db.kv.Update(func(tx *bolt.Tx) error {
+		var idb []byte
 		bkt := tx.Bucket([]byte("products"))
-		n, _ := bkt.NextSequence()
-		if n > MaxProducts {
-			return ErrDBFull
+
+		ref := tx.Bucket([]byte("ref")).Get([]byte(p.RecordReference.Value))
+		if ref != nil {
+			// There is allready a store product with the same RecordReference
+			idb = ref
+			id = btou32(idb)
+
+			// We need update the indexes, removing the entires on the existing record,
+			// before storing an inserting the (potentially changed) record again.
+			if err := db.deIndex(tx, idb); err != nil {
+				return err
+			}
+		} else {
+			// Assign a new ID
+			n, _ := bkt.NextSequence()
+			if n > MaxProducts {
+				return ErrDBFull
+			}
+
+			id = uint32(n)
+			idb = u32tob(uint32(n))
 		}
 
-		id = uint32(n)
-		idb := u32tob(uint32(n))
 		enc := db.encPool.Get().(*primedEncoder)
 		defer db.encPool.Put(enc)
 		b, err := enc.Marshal(p)
@@ -108,6 +126,13 @@ func (db *DB) Store(p *onix.Product) (id uint32, err error) {
 		}
 		if err := bkt.Put(idb, b); err != nil {
 			return err
+		}
+
+		if ref == nil {
+			// Store the record reference
+			if err := tx.Bucket([]byte("ref")).Put([]byte(p.RecordReference.Value), idb); err != nil {
+				return err
+			}
 		}
 
 		return db.index(tx, p, id)
@@ -144,6 +169,50 @@ func (db *DB) index(tx *bolt.Tx, p *onix.Product, id uint32) error {
 		}
 
 		if err := bkt.Put(term, hitsb); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (db *DB) deIndex(tx *bolt.Tx, idb []byte) error {
+	bkt := tx.Bucket([]byte("products"))
+	b := bkt.Get(idb)
+	if b == nil {
+		return errors.New("bug: reference index entry points to non-existing product")
+	}
+	dec := db.decPool.Get().(*primedDecoder)
+	defer db.decPool.Put(dec)
+	p, err := dec.Unmarshal(b)
+	if err != nil {
+		return err
+	}
+	entries := db.indexFn(p)
+	for _, e := range entries {
+		idxBkt := tx.Bucket([]byte("indexes")).Bucket([]byte(e.Index))
+		if idxBkt == nil {
+			// TODO or err?
+			continue
+		}
+
+		term := []byte(strings.ToLower(e.Term))
+		hits := roaring.New()
+
+		bo := idxBkt.Get(term)
+		if bo != nil {
+			if _, err := hits.ReadFrom(bytes.NewReader(bo)); err != nil {
+				return err
+			}
+		}
+
+		hits.Remove(btou32(idb))
+
+		hitsb, err := hits.MarshalBinary()
+		if err != nil {
+			return err
+		}
+
+		if err := idxBkt.Put(term, hitsb); err != nil {
 			return err
 		}
 	}
