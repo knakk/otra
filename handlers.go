@@ -18,10 +18,10 @@ import (
 	"github.com/knakk/kbp/onix/codes/list22"
 	"github.com/knakk/kbp/onix/codes/list5"
 	"github.com/knakk/kbp/onix/codes/list74"
-	"github.com/knakk/otra/db"
+	"github.com/knakk/otra/storage"
 )
 
-func recordHandler(otraDB *db.DB) http.Handler {
+func recordHandler(db *storage.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		paths := strings.Split(r.URL.Path, "/")
 		if len(paths) != 3 || paths[2] == "" {
@@ -33,8 +33,8 @@ func recordHandler(otraDB *db.DB) http.Handler {
 			http.Error(w, "usage: /record/:id", http.StatusBadRequest)
 			return
 		}
-		rec, err := otraDB.Get(uint32(n))
-		if err == db.ErrNotFound {
+		rec, err := db.Get(uint32(n))
+		if err == storage.ErrNotFound {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
@@ -46,9 +46,9 @@ func recordHandler(otraDB *db.DB) http.Handler {
 	})
 }
 
-func indexHandler(otraDB *db.DB) http.Handler {
+func indexHandler(db *storage.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		indexes := otraDB.Indexes()
+		indexes := db.Indexes()
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(&indexes); err != nil {
@@ -57,7 +57,7 @@ func indexHandler(otraDB *db.DB) http.Handler {
 	})
 }
 
-func queryHandler(otraDB *db.DB) http.Handler {
+func queryHandler(db *storage.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		paths := strings.Split(r.URL.Path, "/")
 		if len(paths) != 4 || paths[3] == "" {
@@ -66,7 +66,7 @@ func queryHandler(otraDB *db.DB) http.Handler {
 		}
 
 		start := time.Now()
-		total, ids, err := otraDB.Query(paths[2], paths[3], 10)
+		total, ids, err := db.Query(paths[2], paths[3], 10)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -74,7 +74,7 @@ func queryHandler(otraDB *db.DB) http.Handler {
 
 		results := searchResults{Total: total}
 		for _, id := range ids {
-			p, err := otraDB.Get(id)
+			p, err := db.Get(id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -90,7 +90,7 @@ func queryHandler(otraDB *db.DB) http.Handler {
 	})
 }
 
-func scanHandler(otraDB *db.DB) http.Handler {
+func scanHandler(db *storage.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		paths := strings.Split(r.URL.Path, "/")
 		if len(paths) != 4 || paths[3] == "" {
@@ -98,7 +98,7 @@ func scanHandler(otraDB *db.DB) http.Handler {
 			return
 		}
 
-		hits, err := otraDB.Scan(paths[2], paths[3], 10)
+		hits, err := db.Scan(paths[2], paths[3], 10)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}

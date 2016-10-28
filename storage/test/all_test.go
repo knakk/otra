@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/knakk/kbp/onix"
-	"github.com/knakk/otra/db"
+	"github.com/knakk/otra/storage"
 )
 
 var records = []byte(`
@@ -190,11 +190,11 @@ var updatedRecord = []byte(`
   </PublishingDetail>
 </Product>`)
 
-func indexFn(p *onix.Product) (res []db.IndexEntry) {
+func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 	// ISBN
 	for _, id := range p.ProductIdentifier {
 		if id.ProductIDType.Value == "03" {
-			res = append(res, db.IndexEntry{
+			res = append(res, storage.IndexEntry{
 				Index: "isbn",
 				Term:  id.IDValue.Value,
 			})
@@ -205,7 +205,7 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 	for _, td := range p.DescriptiveDetail.TitleDetail {
 		for _, te := range td.TitleElement {
 			for _, s := range strings.Split(te.TitleWithoutPrefix.Value, " ") {
-				res = append(res, db.IndexEntry{
+				res = append(res, storage.IndexEntry{
 					Index: "title",
 					Term:  s,
 				})
@@ -215,15 +215,15 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 
 	// Contributor
 	for _, c := range p.DescriptiveDetail.Contributor {
-		res = append(res, db.IndexEntry{
+		res = append(res, storage.IndexEntry{
 			Index: "author",
 			Term:  fmt.Sprintf("%s, %s", c.KeyNames.Value, c.NamesBeforeKey.Value),
 		})
-		res = append(res, db.IndexEntry{
+		res = append(res, storage.IndexEntry{
 			Index: "author",
 			Term:  c.KeyNames.Value,
 		})
-		res = append(res, db.IndexEntry{
+		res = append(res, storage.IndexEntry{
 			Index: "author",
 			Term:  c.NamesBeforeKey.Value,
 		})
@@ -232,7 +232,7 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 	// Subject
 	for _, s := range p.DescriptiveDetail.Subject {
 		for _, st := range s.SubjectHeadingText {
-			res = append(res, db.IndexEntry{
+			res = append(res, storage.IndexEntry{
 				Index: "subject",
 				Term:  st.Value,
 			})
@@ -246,7 +246,7 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 func TestAll(t *testing.T) {
 	f := tempfile()
 	defer os.Remove(f)
-	db, err := db.Open(f, indexFn)
+	db, err := storage.Open(f, indexFn)
 	if err != nil {
 		log.Fatal(err)
 	}

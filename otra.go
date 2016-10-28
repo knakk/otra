@@ -12,7 +12,7 @@ import (
 	"github.com/knakk/kbp/onix/codes/list15"
 	"github.com/knakk/kbp/onix/codes/list163"
 	"github.com/knakk/kbp/onix/codes/list5"
-	"github.com/knakk/otra/db"
+	"github.com/knakk/otra/storage"
 )
 
 type ONIXMessage struct {
@@ -25,11 +25,11 @@ func main() {
 	listenAdr := flag.String("l", ":8765", "listening address")
 	flag.Parse()
 
-	otraDB, err := db.Open(*dbFile, indexFn)
+	db, err := storage.Open(*dbFile, indexFn)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer otraDB.Close()
+	defer db.Close()
 
 	if *loadFile != "" {
 		log.Printf("Attempting to parse onix product file")
@@ -55,16 +55,16 @@ func main() {
 				log.Printf("TODO handle notification: %v", p.NotificationType.Value)
 				continue
 			}
-			if _, err := otraDB.Store(p); err != nil {
+			if _, err := db.Store(p); err != nil {
 				log.Fatal(err)
 			}
 		}
 	}
 
-	http.Handle("/autocomplete/", scanHandler(otraDB))
-	http.Handle("/query/", queryHandler(otraDB))
-	http.Handle("/record/", recordHandler(otraDB))
-	http.Handle("/indexes", indexHandler(otraDB))
+	http.Handle("/autocomplete/", scanHandler(db))
+	http.Handle("/query/", queryHandler(db))
+	http.Handle("/record/", recordHandler(db))
+	http.Handle("/indexes", indexHandler(db))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(page); err != nil {
@@ -76,10 +76,10 @@ func main() {
 	log.Fatal(http.ListenAndServe(*listenAdr, nil))
 }
 
-func indexFn(p *onix.Product) (res []db.IndexEntry) {
+func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 	for _, id := range p.ProductIdentifier {
 		if id.ProductIDType.Value == list5.ISBN13 {
-			res = append(res, db.IndexEntry{
+			res = append(res, storage.IndexEntry{
 				Index: "isbn",
 				Term:  id.IDValue.Value,
 			})
@@ -89,7 +89,7 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 		for _, t := range c.TitleDetail {
 			for _, tt := range t.TitleElement {
 				if tt.TitleText != nil {
-					res = append(res, db.IndexEntry{
+					res = append(res, storage.IndexEntry{
 						Index: "series",
 						Term:  tt.TitleText.Value,
 					})
@@ -100,24 +100,24 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 
 	for _, t := range p.DescriptiveDetail.TitleDetail {
 		if t.TitleType.Value == list15.DistinctiveTitleBookCoverTitleSerialTitleOnItemSerialContentItemOrReviewedResource {
-			res = append(res, db.IndexEntry{
+			res = append(res, storage.IndexEntry{
 				Index: "title",
 				Term:  t.TitleElement[0].TitleText.Value,
 			})
 			if t.TitleElement[0].Subtitle != nil {
-				res = append(res, db.IndexEntry{
+				res = append(res, storage.IndexEntry{
 					Index: "title",
 					Term:  t.TitleElement[0].Subtitle.Value,
 				})
 			}
 		}
 		if t.TitleType.Value == list15.TitleInOriginalLanguage {
-			res = append(res, db.IndexEntry{
+			res = append(res, storage.IndexEntry{
 				Index: "title",
 				Term:  t.TitleElement[0].TitleText.Value,
 			})
 			if t.TitleElement[0].Subtitle != nil {
-				res = append(res, db.IndexEntry{
+				res = append(res, storage.IndexEntry{
 					Index: "title",
 					Term:  t.TitleElement[0].Subtitle.Value,
 				})
@@ -135,7 +135,7 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 		}*/
 
 	for _, p := range p.PublishingDetail.Publisher {
-		res = append(res, db.IndexEntry{
+		res = append(res, storage.IndexEntry{
 			Index: "publisher",
 			Term:  p.PublisherName.Value,
 		})
@@ -143,7 +143,7 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 	}
 	for _, d := range p.PublishingDetail.PublishingDate {
 		if d.PublishingDateRole.Value == list163.PublicationDate {
-			res = append(res, db.IndexEntry{
+			res = append(res, storage.IndexEntry{
 				Index: "year",
 				Term:  d.Date.Value,
 			})
@@ -153,7 +153,7 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 
 	for _, s := range p.DescriptiveDetail.Subject {
 		for _, st := range s.SubjectHeadingText {
-			res = append(res, db.IndexEntry{
+			res = append(res, storage.IndexEntry{
 				Index: "subject",
 				Term:  st.Value,
 			})
@@ -172,7 +172,7 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 			} else if c.CorporateNameInverted != nil {
 				agent = c.CorporateNameInverted.Value
 			}
-			res = append(res, db.IndexEntry{
+			res = append(res, storage.IndexEntry{
 				Index: "agent",
 				Term:  agent,
 			})
@@ -199,7 +199,7 @@ func indexFn(p *onix.Product) (res []db.IndexEntry) {
 			default:
 				roleIndex = "role" + role.Value
 			}
-			res = append(res, db.IndexEntry{
+			res = append(res, storage.IndexEntry{
 				Index: roleIndex,
 				Term:  agent,
 			})
