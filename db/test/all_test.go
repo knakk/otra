@@ -381,9 +381,34 @@ func TestAll(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(res, []uint32{ids[0]}) {
-		t.Error("index not updated when with product update")
+		t.Error("index not updated with product update")
 	}
 
+	// Verify record can be deleted, and indexes updated
+	if err := db.Delete(ids[0]); err != nil {
+		t.Fatal(err)
+	}
+
+	_, res, err = db.Query("author", "zappa", 10) // should not match anymore
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res) != 0 {
+		t.Error("index not updated when product deleted")
+	}
+
+	// Verify deletion by record reference
+	if err := db.DeleteByRef("id.1"); err != nil {
+		t.Fatal(err)
+	}
+
+	_, res, err = db.Query("author", "jensen", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res) != 0 {
+		t.Error("index not updated when product deleted")
+	}
 }
 
 func checked(t *testing.T, f func() error) {

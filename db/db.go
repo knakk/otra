@@ -71,17 +71,24 @@ func (db *DB) setup() (*DB, error) {
 }
 
 // Get will retrieve the Product with the give ID, if it exists.
-func (db *DB) Get(id uint32) (*onix.Product, error) {
-	var b []byte
-	if err := db.kv.View(func(tx *bolt.Tx) error {
-		bkt := tx.Bucket([]byte("products"))
-		b = bkt.Get(u32tob(id))
-		if b == nil {
-			return ErrNotFound
+func (db *DB) Get(id uint32) (p *onix.Product, err error) {
+	err = db.kv.View(func(tx *bolt.Tx) error {
+		var err2 error
+		p, err2 = db.get(tx, id)
+		if err2 != nil {
+			return err2
 		}
 		return nil
-	}); err != nil {
-		return nil, err
+	})
+	return p, err
+}
+
+func (db *DB) get(tx *bolt.Tx, id uint32) (p *onix.Product, err error) {
+	bkt := tx.Bucket([]byte("products"))
+	b := bkt.Get(u32tob(id))
+	if b == nil {
+		err = ErrNotFound
+		return p, err
 	}
 	dec := db.decPool.Get().(*primedDecoder)
 	defer db.decPool.Put(dec)
@@ -140,6 +147,55 @@ func (db *DB) Store(p *onix.Product) (id uint32, err error) {
 	return id, err
 }
 
+//func (db *DB) GetByRef(ref string) error {}
+
+func (db *DB) Delete(id uint32) (err error) {
+	err = db.kv.Update(func(tx *bolt.Tx) error {
+		p, err2 := db.get(tx, id)
+		if err2 != nil {
+			return err2
+		}
+		ref := tx.Bucket([]byte("ref")).Get([]byte(p.RecordReference.Value))
+		if ref == nil {
+			return ErrNotFound
+		}
+
+		idb := u32tob(id)
+		if err := db.deIndex(tx, idb); err != nil {
+			return err
+		}
+
+		if err := tx.Bucket([]byte("products")).Delete(idb); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	return err
+}
+
+func (db *DB) DeleteByRef(ref string) (err error) {
+	err = db.kv.Update(func(tx *bolt.Tx) error {
+		ref := tx.Bucket([]byte("ref")).Get([]byte(ref))
+		if ref == nil {
+			return ErrNotFound
+		}
+
+		idb := ref
+
+		if err := db.deIndex(tx, idb); err != nil {
+			return err
+		}
+
+		if err := tx.Bucket([]byte("products")).Delete(idb); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	return err
+}
+
 func (db *DB) index(tx *bolt.Tx, p *onix.Product, id uint32) error {
 	entries := db.indexFn(p)
 	for _, e := range entries {
@@ -176,6 +232,7 @@ func (db *DB) index(tx *bolt.Tx, p *onix.Product, id uint32) error {
 }
 
 func (db *DB) deIndex(tx *bolt.Tx, idb []byte) error {
+	// TODO use db.get(tx, id)
 	bkt := tx.Bucket([]byte("products"))
 	b := bkt.Get(idb)
 	if b == nil {
