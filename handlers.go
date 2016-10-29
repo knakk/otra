@@ -179,6 +179,7 @@ func extractRes(p *onix.Product, id uint32) (hit Hit) {
 	}
 	for _, d := range p.PublishingDetail.PublishingDate {
 		if d.PublishingDateRole.Value == list163.PublicationDate {
+			// TODO research other date roles
 			hit.PublishedYear = d.Date.Value
 			break
 		}
@@ -187,6 +188,7 @@ func extractRes(p *onix.Product, id uint32) (hit Hit) {
 
 	for _, s := range p.DescriptiveDetail.Subject {
 		for _, st := range s.SubjectHeadingText {
+			// TODO duplicates are added, remove them
 			hit.Subjects = append(hit.Subjects, st.Value)
 		}
 	}

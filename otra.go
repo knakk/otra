@@ -2,10 +2,13 @@ package main
 
 import (
 	"encoding/xml"
+	"errors"
 	"flag"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
+	"time"
 
 	"github.com/knakk/kbp/onix"
 	"github.com/knakk/kbp/onix/codes/list1"
@@ -20,9 +23,18 @@ type ONIXMessage struct {
 }
 
 func main() {
-	dbFile := flag.String("db", "otra.db", "database file")
-	loadFile := flag.String("load", "", "load onix xml file into db")
-	listenAdr := flag.String("l", ":8765", "listening address")
+	var (
+		dbFile         = flag.String("db", "otra.db", "database file")
+		loadFile       = flag.String("load", "", "load onix xml file into db")
+		listenAdr      = flag.String("l", ":8765", "listening address")
+		harvestAdr     = flag.String("harvest-adr", "", "harvesting address")
+		harvestAuthAdr = flag.String("harvest-auth", "", "harvesting auth address")
+		harvestUser    = flag.String("harvest-user", "", "harvesting auth user")
+		harvestPass    = flag.String("harvest-pass", "", "harvesting auth password")
+		harvestImgDir  = flag.String("harvest-img", "img", "harvesting images to this directory")
+		harvestStart   = flag.Duration("harvest-before", time.Hour*24*29*6, "harvesting start duration before current time")
+		harvestPoll    = flag.Duration("harvest-poll", time.Hour*12, "harvesting polling frquencey")
+	)
 	flag.Parse()
 
 	db, err := storage.Open(*dbFile, indexFn)
@@ -44,21 +56,7 @@ func main() {
 		}
 
 		log.Printf("Loading %d onix products into db", len(products.Product))
-		for _, p := range products.Product {
-			switch p.NotificationType.Value {
-			case list1.AdvanceNotificationConfirmed, list1.NotificationConfirmedOnPublication:
-				// OK store and index
-			case list1.Delete:
-				log.Println("TODO handle delete notifications")
-				continue
-			default:
-				log.Printf("TODO handle notification: %v", p.NotificationType.Value)
-				continue
-			}
-			if _, err := db.Store(p); err != nil {
-				log.Fatal(err)
-			}
-		}
+		handleBatch(db, products.Product)
 	}
 
 	http.Handle("/autocomplete/", scanHandler(db))
@@ -72,8 +70,157 @@ func main() {
 		}
 	})
 
+	go startHarvester(
+		db,
+		*harvestAdr,
+		*harvestAuthAdr,
+		*harvestUser,
+		*harvestPass,
+		*harvestImgDir,
+		*harvestStart,
+		*harvestPoll,
+	)
+
 	log.Printf("Starting otra server. Listening at %s", *listenAdr)
 	log.Fatal(http.ListenAndServe(*listenAdr, nil))
+}
+
+func startHarvester(db *storage.DB, adr, auth, user, pass, imgDir string, start, poll time.Duration) {
+	if adr == "" || auth == "" || user == "" || pass == "" {
+		log.Printf("harvester: missing parameters, will not start")
+		return
+	}
+
+	token, err := getToken(auth, user, pass)
+	if err != nil {
+		log.Printf("harvester: failed to get authorization token: %v", err)
+		return
+	}
+
+	timeCursor := time.Now().Add(-start)
+	/*b, err := db.MetaGet([]byte("lastharvest"))
+	if err != nil && err != storage.ErrNotFound {
+		log.Printf("harvester: failed to read last harvest metadata: %v", err)
+	}
+	lastHarvest, err := time.Parse(b, )
+	*/
+
+	nextCursor := ""
+
+	for {
+		res, err := getRecords(adr, token, nextCursor, timeCursor)
+		if err != nil {
+			log.Printf("harvester: failed to get records: %v", err)
+		}
+
+		if res.StatusCode != http.StatusOK {
+			log.Printf("harvester: request failed: %v", res.Status)
+			b, _ := ioutil.ReadAll(res.Body)
+			log.Println(string(b))
+			continue
+		}
+
+		nextCursor = res.Header.Get("Next")
+		if res.Header.Get("Link") == "" {
+			// (No more records. Next unchanged. Link not present in Response)
+			nextCursor = ""
+		}
+
+		dec := xml.NewDecoder(res.Body)
+		n := 0
+		for {
+			t, _ := dec.Token()
+			if t == nil {
+				break
+			}
+			switch se := t.(type) {
+			case xml.StartElement:
+				if se.Name.Local == "Product" {
+					var p *onix.Product
+					if err := dec.DecodeElement(&p, &se); err != nil {
+						log.Printf("harvester: xml parsing error: %v", err)
+						continue
+					}
+
+					if err := handleProduct(db, p); err != nil {
+						log.Printf("harvester: error storing product: %v", err)
+					} else {
+						n++
+					}
+
+				}
+			}
+		}
+
+		res.Body.Close()
+		log.Printf("harvester: done processing %d records", n)
+
+		if nextCursor != "" {
+			continue
+		}
+
+		log.Printf("harvester: sleeping %v before attempting to harvest again", poll)
+		time.Sleep(poll)
+	}
+}
+
+func getRecords(adr, token, next string, start time.Time) (*http.Response, error) {
+	req, err := http.NewRequest("GET", adr, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Date", time.Now().UTC().Format(time.RFC1123))
+	req.Header.Set("Authorization", "Boknett "+token)
+
+	q := req.URL.Query()
+	if next != "" {
+		q.Add("next", next)
+	} else {
+		q.Add("after", start.Format("20060102150405")) // yyyyMMddHHmmss
+	}
+	q.Add("subscription", "extended")
+	q.Add("pagesize", "1000")
+	req.URL.RawQuery = q.Encode()
+
+	return http.DefaultClient.Do(req)
+}
+
+func getToken(auth, user, pass string) (string, error) {
+	res, err := http.PostForm(auth,
+		url.Values{"username": {user}, "password": {pass}})
+	if err != nil {
+		return "", err
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusCreated {
+		return "", errors.New(res.Status)
+	}
+	return res.Header.Get("Boknett-TGT"), nil
+}
+
+func handleBatch(db *storage.DB, records []*onix.Product) {
+	for _, p := range records {
+		if err := handleProduct(db, p); err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func handleProduct(db *storage.DB, p *onix.Product) error {
+	switch p.NotificationType.Value {
+	case list1.AdvanceNotificationConfirmed, list1.NotificationConfirmedOnPublication:
+		// OK store and index
+	case list1.Delete:
+		if err := db.DeleteByRef(p.RecordReference.Value); err != nil {
+			log.Printf("delete record with ref %q failed: %v", p.RecordReference.Value, err)
+		}
+		return nil
+	default:
+		log.Printf("TODO handle notification: %v", p.NotificationType.Value)
+		return nil
+	}
+	_, err := db.Store(p)
+	return err
 }
 
 func indexFn(p *onix.Product) (res []storage.IndexEntry) {

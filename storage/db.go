@@ -59,7 +59,7 @@ func (db *DB) Close() error {
 func (db *DB) setup() (*DB, error) {
 	// set up required buckets
 	err := db.kv.Update(func(tx *bolt.Tx) error {
-		for _, b := range [][]byte{[]byte("products"), []byte("indexes"), []byte("ref")} {
+		for _, b := range [][]byte{[]byte("meta"), []byte("products"), []byte("indexes"), []byte("ref")} {
 			_, err := tx.CreateBucketIfNotExists(b)
 			if err != nil {
 				return err
@@ -356,6 +356,25 @@ func (db *DB) Query(index, query string, limit int) (total int, res []uint32, er
 }
 
 // func (db *DB) DeleteIndex(index string) error
+
+// MetaSet stores a key/value pair in the meta bucket.
+func (db *DB) MetaSet(key, val []byte) error {
+	return db.kv.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket([]byte("meta")).Put(key, val)
+	})
+}
+
+// MetaGet retrieves the value of given keey in the meta bucket.
+func (db *DB) MetaGet(key []byte) (val []byte, err error) {
+	err = db.kv.View(func(tx *bolt.Tx) error {
+		val = tx.Bucket([]byte("meta")).Get(key)
+		if val == nil {
+			return ErrNotFound
+		}
+		return nil
+	})
+	return val, err
+}
 
 // u32tob converts a uint32 into a 4-byte slice.
 func u32tob(v uint32) []byte {
