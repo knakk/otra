@@ -376,6 +376,41 @@ func (db *DB) MetaGet(key []byte) (val []byte, err error) {
 	return val, err
 }
 
+type idxStat struct {
+	Name  string
+	Count int
+}
+
+type Stats struct {
+	Path    string
+	Size    int64
+	Records int
+	Indexes []idxStat
+}
+
+func (db *DB) Stats() Stats {
+	stats := Stats{
+		Path: db.kv.Path(),
+	}
+	db.kv.View(func(tx *bolt.Tx) error {
+		stats.Size = tx.Size()
+		stats.Records = tx.Bucket([]byte("products")).Stats().KeyN
+
+		return tx.Bucket([]byte("indexes")).ForEach(func(k, v []byte) error {
+			if v == nil {
+				stats.Indexes = append(stats.Indexes,
+					idxStat{
+						Name:  string(k),
+						Count: tx.Bucket([]byte("indexes")).Bucket(k).Stats().KeyN,
+					})
+			}
+			return nil
+		})
+	})
+	return stats
+
+}
+
 // u32tob converts a uint32 into a 4-byte slice.
 func u32tob(v uint32) []byte {
 	b := make([]byte, 4)

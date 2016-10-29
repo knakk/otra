@@ -209,3 +209,18 @@ var hitsTmpl = template.Must(template.New("hits").Parse(`
 	</div>
 {{end}}
 `))
+
+var statsTmpl = template.Must(template.New("stats").Parse(`<pre>
+Database
+========
+path:    {{.Path}}
+size:    {{.Size}}
+records: {{.Records}}
+
+Indexes
+=======
+{{range .Indexes -}}
+{{.Name}}: {{.Count}}
+{{end}}
+</pre>
+`))

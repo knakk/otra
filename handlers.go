@@ -110,6 +110,15 @@ func scanHandler(db *storage.DB) http.Handler {
 	})
 }
 
+func statsHandler(db *storage.DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		if err := statsTmpl.Execute(w, db.Stats()); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+}
+
 type searchResults struct {
 	Hits  []Hit
 	Total int
