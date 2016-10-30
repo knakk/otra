@@ -389,6 +389,11 @@ func TestAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Reference index must also be updated
+	if db.Ref("id.0") != 0 {
+		t.Error("record reference not deleted when product deleted")
+	}
+
 	_, res, err = db.Query("author", "zappa", 10) // should not match anymore
 	if err != nil {
 		t.Fatal(err)

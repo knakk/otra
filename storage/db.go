@@ -147,17 +147,24 @@ func (db *DB) Store(p *onix.Product) (id uint32, err error) {
 	return id, err
 }
 
-//func (db *DB) GetByRef(ref string) error {}
+// Ref returns the product ID for the given product reference. If not found,
+// it returns 0
+func (db *DB) Ref(ref string) (u uint32) {
+	db.kv.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("ref")).Get([]byte(ref))
+		if b != nil {
+			u = btou32(b)
+		}
+		return nil
+	})
+	return u
+}
 
 func (db *DB) Delete(id uint32) (err error) {
 	err = db.kv.Update(func(tx *bolt.Tx) error {
 		p, err2 := db.get(tx, id)
 		if err2 != nil {
 			return err2
-		}
-		ref := tx.Bucket([]byte("ref")).Get([]byte(p.RecordReference.Value))
-		if ref == nil {
-			return ErrNotFound
 		}
 
 		idb := u32tob(id)
@@ -166,6 +173,10 @@ func (db *DB) Delete(id uint32) (err error) {
 		}
 
 		if err := tx.Bucket([]byte("products")).Delete(idb); err != nil {
+			return err
+		}
+
+		if err := tx.Bucket([]byte("ref")).Delete([]byte(p.RecordReference.Value)); err != nil {
 			return err
 		}
 
