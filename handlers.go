@@ -195,10 +195,15 @@ func extractRes(p *onix.Product, id uint32) (hit Hit) {
 		// TODO list163.DateOfFirstPublication ?
 	}
 
+	subjects := make(map[string]bool)
 	for _, s := range p.DescriptiveDetail.Subject {
 		for _, st := range s.SubjectHeadingText {
-			// TODO duplicates are added, remove them
+			if subjects[st.Value] {
+				// We don't want to display duplicate subjects
+				continue
+			}
 			hit.Subjects = append(hit.Subjects, st.Value)
+			subjects[st.Value] = true
 		}
 	}
 
