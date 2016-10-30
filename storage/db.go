@@ -366,7 +366,29 @@ func (db *DB) Query(index, query string, limit int) (total int, res []uint32, er
 	return total, res, err
 }
 
-// func (db *DB) DeleteIndex(index string) error
+func (db *DB) ReindexAll() error {
+	return db.kv.Update(func(tx *bolt.Tx) error {
+		// Delete all indexes
+		for _, index := range db.Indexes() {
+			if err := tx.Bucket([]byte("indexes")).DeleteBucket([]byte(index)); err != nil {
+				return err
+			}
+		}
+
+		cur := tx.Bucket([]byte("products")).Cursor()
+		for k, _ := cur.First(); k != nil; k, _ = cur.Next() {
+			id := btou32(k)
+			p, err := db.get(tx, id)
+			if err != nil {
+				return err
+			}
+			if err := db.index(tx, p, id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
 
 // MetaSet stores a key/value pair in the meta bucket.
 func (db *DB) MetaSet(key, val []byte) error {

@@ -27,6 +27,7 @@ func main() {
 		dbFile         = flag.String("db", "otra.db", "database file")
 		loadFile       = flag.String("load", "", "load onix xml file into db")
 		listenAdr      = flag.String("l", ":8765", "listening address")
+		reindex        = flag.Bool("reindex", false, "reindex all records on startup")
 		harvestAdr     = flag.String("harvest-adr", "", "harvesting address")
 		harvestAuthAdr = flag.String("harvest-auth", "", "harvesting auth address")
 		harvestUser    = flag.String("harvest-user", "", "harvesting auth user")
@@ -57,6 +58,17 @@ func main() {
 
 		log.Printf("Loading %d onix products into db", len(products.Product))
 		handleBatch(db, products.Product)
+	}
+
+	if *reindex {
+		go func() {
+			log.Println("reindexing all records...")
+			start := time.Now()
+			if err := db.ReindexAll(); err != nil {
+				log.Println("reindexing failed: %v", err)
+			}
+			log.Printf("done reindexing %d records in %v", db.Stats().Records, time.Since(start))
+		}()
 	}
 
 	http.Handle("/autocomplete/", scanHandler(db))
