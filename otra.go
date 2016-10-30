@@ -66,6 +66,7 @@ func main() {
 	http.Handle("/stats", statsHandler(db))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
 		if _, err := w.Write(page); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
