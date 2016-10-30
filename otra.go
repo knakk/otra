@@ -339,10 +339,20 @@ func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 				roleIndex = "contributor"
 			case "A38":
 				roleIndex = "originalauthor"
+			case "A99":
+				roleIndex = "othercreator"
 			case "B01":
 				roleIndex = "editor"
 			case "B06":
 				roleIndex = "translator"
+			case "D01":
+				roleIndex = "producer"
+			case "D02":
+				roleIndex = "director"
+			case "E01":
+				roleIndex = "actor"
+			case "E06":
+				roleIndex = "solist"
 			case "E07":
 				roleIndex = "reader"
 			default:
