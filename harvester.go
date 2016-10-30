@@ -101,6 +101,7 @@ func (h *harvester) getRecords() (*http.Response, error) {
 	if h.token == "" {
 		if err := h.getToken(); err != nil {
 			return nil, err
+		}
 	}
 	req, err := http.NewRequest("GET", h.endpoint, nil)
 	if err != nil {
