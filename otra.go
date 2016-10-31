@@ -105,6 +105,9 @@ func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 			})
 		}
 	}
+	if p.DescriptiveDetail == nil {
+		return res
+	}
 	for _, c := range p.DescriptiveDetail.Collection {
 		for _, t := range c.TitleDetail {
 			for _, tt := range t.TitleElement {
