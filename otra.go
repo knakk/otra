@@ -22,7 +22,6 @@ type ONIXMessage struct {
 func main() {
 	var (
 		dbFile         = flag.String("db", "otra.db", "database file")
-		loadFile       = flag.String("load", "", "load onix xml file into db")
 		listenAdr      = flag.String("l", ":8765", "listening address")
 		reindex        = flag.Bool("reindex", false, "reindex all records on startup")
 		harvestAdr     = flag.String("harvest-adr", "", "harvesting address")
@@ -40,22 +39,6 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-
-	if *loadFile != "" {
-		log.Printf("Attempting to parse onix product file")
-		b, err := ioutil.ReadFile("onix.xml")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		var products ONIXMessage
-		if err := xml.Unmarshal(b, &products); err != nil {
-			log.Fatal(err)
-		}
-
-		log.Printf("Loading %d onix products into db", len(products.Product))
-		handleBatch(db, products.Product)
-	}
 
 	if *reindex {
 		go func() {
