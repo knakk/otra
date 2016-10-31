@@ -154,7 +154,7 @@ func handleProduct(db *storage.DB, p *onix.Product) error {
 	case list1.AdvanceNotificationConfirmed, list1.NotificationConfirmedOnPublication:
 		// OK store and index
 	case list1.Delete:
-		if err := db.DeleteByRef(p.RecordReference.Value); err != nil {
+		if err := db.DeleteByRef(p.RecordReference.Value); err != nil && err != storage.ErrNotFound {
 			log.Printf("delete record with ref %q failed: %v", p.RecordReference.Value, err)
 		}
 		return nil
