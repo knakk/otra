@@ -3,11 +3,14 @@ package main
 import (
 	"encoding/xml"
 	"errors"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/knakk/kbp/onix"
@@ -36,7 +39,7 @@ func (h *harvester) Run() {
 
 	// Create image directory if it doesn't allready exist
 	if _, err := os.Stat(h.imageDir); os.IsNotExist(err) {
-		os.Mkdir(h.imageDir, 0666)
+		os.Mkdir(h.imageDir, 0777)
 	}
 
 	for {
@@ -79,7 +82,7 @@ func (h *harvester) Run() {
 						continue
 					}
 
-					if err := handleProduct(h.db, p); err != nil {
+					if err := h.handleProduct(p); err != nil {
 						log.Printf("harvester: error storing product: %v", err)
 					} else {
 						n++
@@ -141,20 +144,12 @@ func (h *harvester) getToken() error {
 	return nil
 }
 
-func handleBatch(db *storage.DB, records []*onix.Product) {
-	for _, p := range records {
-		if err := handleProduct(db, p); err != nil {
-			log.Println(err)
-		}
-	}
-}
-
-func handleProduct(db *storage.DB, p *onix.Product) error {
+func (h *harvester) handleProduct(p *onix.Product) error {
 	switch p.NotificationType.Value {
 	case list1.AdvanceNotificationConfirmed, list1.NotificationConfirmedOnPublication:
 		// OK store and index
 	case list1.Delete:
-		if err := db.DeleteByRef(p.RecordReference.Value); err != nil && err != storage.ErrNotFound {
+		if err := h.db.DeleteByRef(p.RecordReference.Value); err != nil && err != storage.ErrNotFound {
 			log.Printf("delete record with ref %q failed: %v", p.RecordReference.Value, err)
 		}
 		return nil
@@ -162,6 +157,47 @@ func handleProduct(db *storage.DB, p *onix.Product) error {
 		log.Printf("TODO handle notification: %v", p.NotificationType.Value)
 		return nil
 	}
-	_, err := db.Store(p)
+	id, err := h.db.Store(p)
+	if err != nil {
+		return err
+	}
+
+	imgDir := filepath.Join(h.imageDir, strconv.Itoa(int(id)))
+	if _, err := os.Stat(imgDir); os.IsNotExist(err) {
+		if err2 := os.Mkdir(imgDir, 0777); err2 != nil {
+			return err2
+		}
+	}
+
+	for _, link := range extractLinks(p) {
+		if err := h.download(filepath.Join(imgDir, link[0]), link[1]); err != nil {
+			log.Printf("err downloading file %q: %v", link[1], err)
+			continue
+		}
+	}
+	return nil
+}
+
+func (h *harvester) download(path, url string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Date", time.Now().UTC().Format(time.RFC1123))
+	req.Header.Set("Authorization", "Boknett "+h.token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return errors.New(resp.Status)
+	}
+	_, err = io.Copy(f, resp.Body)
 	return err
 }

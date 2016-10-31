@@ -1,15 +1,15 @@
 package main
 
 import (
-	"encoding/xml"
 	"flag"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/knakk/kbp/onix"
 	"github.com/knakk/kbp/onix/codes/list15"
+	"github.com/knakk/kbp/onix/codes/list159"
+	"github.com/knakk/kbp/onix/codes/list162"
 	"github.com/knakk/kbp/onix/codes/list163"
 	"github.com/knakk/kbp/onix/codes/list5"
 	"github.com/knakk/otra/storage"
@@ -186,6 +186,8 @@ func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 			switch role.Value {
 			case "A01":
 				roleIndex = "author"
+			case "A03":
+				roleIndex = "scriptwriter"
 			case "A06":
 				roleIndex = "composer"
 			case "A09":
@@ -222,5 +224,24 @@ func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 		}
 	}
 
+	return res
+}
+
+func extractLinks(p *onix.Product) (res [][2]string) {
+	if p.CollateralDetail == nil {
+		return res
+	}
+	res = make([][2]string, 0)
+	for _, r := range p.CollateralDetail.SupportingResource {
+		if r.ResourceMode.Value == list159.Image {
+			for _, v := range r.ResourceVersion {
+				for _, f := range v.ResourceVersionFeature {
+					if f.ResourceVersionFeatureType.Value == list162.Filename {
+						res = append(res, [2]string{f.FeatureNote[0].Value, v.ResourceLink[0].Value})
+					}
+				}
+			}
+		}
+	}
 	return res
 }
