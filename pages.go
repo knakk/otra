@@ -17,14 +17,18 @@ var page = []byte(`
 		label          { display: block; font-weight: bold; font-size: 80%; }
 		input          { width: 60% }
 		input, button  { padding: .2em .62em; font-size: 100% }
+		img            { float: left; max-width: 100px }
 		.relative      { position: relative }
 		.hidden        { display: none }
 		p              { margin: 0 0 0.22em 0; }
 		p.details      { font-size: smaller; }
-		section		   { margin-bottom: 1em; }
-		.record        { border-bottom: 1px dashed #000; margin:0; padding: 0.5em ;}
+		section        { margin-bottom: 1em; }
+		.record        { clear: both; border-bottom: 1px dashed #000; margin:0; padding: 0.5em ;}
 		.record:hover  { background-color: #f0f0f0; }
 		.xmlRecord     { display: block; float: right; font-variant: small-caps }
+		.imgLink       { position: relative }
+		.imgLink img   { position: absolute; top: 0; left: 60px; display: none }
+		.imgLink:hover img { display: block }
 		.collections span+span:before,.subjects span+span:before { content: ' | '}
 		.subtitles small+small:before { content: ' : '}
 
@@ -186,7 +190,7 @@ var hitsTmpl = template.Must(template.New("hits").Parse(`
 <h4>{{.Total}} hits ({{.Took}}ms)</h4>
 {{range .Hits}}
 	<div class="record">
-		<a class="xmlRecord" target="_blank" href="/record/{{.ID}}">xml</a>
+		<div class="xmlRecord"><a target="_blank" href="/record/{{.ID}}">xml</a> <a class="imgLink" target="_blank" href="/img/{{.ID}}">img<img src="/img/{{.ID}}/os.jpg"></a></div>
 		<p><strong>{{.Title}}</strong><br/>
 			<span class="subtitles">{{range .Subtitles}}<small>{{.}}</small>{{end}}</span>
 		</p>

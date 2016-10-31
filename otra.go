@@ -56,6 +56,7 @@ func main() {
 	http.Handle("/record/", recordHandler(db))
 	http.Handle("/indexes", indexHandler(db))
 	http.Handle("/stats", statsHandler(db))
+	http.Handle("/img/", http.StripPrefix("/img/", http.FileServer(http.Dir("img"))))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
