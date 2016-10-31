@@ -71,6 +71,10 @@ func (h *harvester) Run() {
 				if se.Name.Local == "Product" {
 					var p *onix.Product
 					if err := dec.DecodeElement(&p, &se); err != nil {
+						// TODO: getting a few: read: connection reset by peer
+						// sometimes, I guess because we take to long to drain body,
+						// consider retry or reading whole body first, as we are
+						// loosing some records.
 						log.Printf("harvester: xml parsing error: %v", err)
 						continue
 					}
