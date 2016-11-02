@@ -23,12 +23,11 @@ var page = []byte(`
 		p              { margin: 0 0 0.22em 0; }
 		p.details      { font-size: smaller; }
 		section        { margin-bottom: 1em; }
-		.record        { clear: both; border-bottom: 1px dashed #000; margin:0; padding: 0.5em ;}
+		.record        { clear: both; border-bottom: 1px dashed #000; margin:0; padding: 0.5em;}
+		.record-img    { display: inline-block; width: 20%; float; left; padding-top: 0.5em; }
+		.record-text   { display: inline-block; width: 78%; float; right; vertical-align: top }
 		.record:hover  { background-color: #f0f0f0; }
 		.xmlRecord     { display: block; float: right; font-variant: small-caps }
-		.imgLink       { position: relative }
-		.imgLink img   { position: absolute; top: 0; left: 60px; display: none }
-		.imgLink:hover img { display: block }
 		.collections span+span:before,.subjects span+span:before { content: ' | '}
 		.subtitles small+small:before { content: ' : '}
 
@@ -190,26 +189,31 @@ var hitsTmpl = template.Must(template.New("hits").Parse(`
 <h4>{{.Total}} hits ({{.Took}}ms)</h4>
 {{range .Hits}}
 	<div class="record">
-		<div class="xmlRecord"><a target="_blank" href="/record/{{.ID}}">xml</a> <a class="imgLink" target="_blank" href="/img/{{.ID}}">img<img src="/img/{{.ID}}/os.jpg"></a></div>
-		<p><strong>{{.Title}}</strong><br/>
-			<span class="subtitles">{{range .Subtitles}}<small>{{.}}</small>{{end}}</span>
-		</p>
-		<p class="contributors">
-			{{range $role, $agents := .Contributors}}
-				<span>{{$role}} {{range $agents}}<a href="/?q=agent/{{.}}">{{.}}</a> {{end}}</span>
+		<div class="record-img">
+			<a target="_blank" href="/img/{{.ID}}"><img src="/img/{{.ID}}/os.jpg"></a>
+		</div>
+		<div class="record-text">
+			<div class="xmlRecord"><a target="_blank" href="/record/{{.ID}}">xml</a> </div>
+			<p><strong>{{.Title}}</strong><br/>
+				<span class="subtitles">{{range .Subtitles}}<small>{{.}}</small>{{end}}</span>
+			</p>
+			<p class="contributors">
+				{{range $role, $agents := .Contributors}}
+					<span>{{$role}} {{range $agents}}<a href="/?q=agent/{{.}}">{{.}}</a> {{end}}</span>
+				{{end}}
+			</p>
+			<p class="details">Utgitt av {{.Publisher}} <a href="/?q=year/{{.PublishedYear}}">{{.PublishedYear}}</a></p>
+			{{if .Collection}}
+				<p class="collections details">Serie:
+					{{range .Collection}}<span><a href="/?q=series/{{.}}">{{.}}</a></span>{{end}}
+				</p>
 			{{end}}
-		</p>
-		<p class="details">Utgitt av {{.Publisher}} <a href="/?q=year/{{.PublishedYear}}">{{.PublishedYear}}</a></p>
-		{{if .Collection}}
-			<p class="collections details">Serie:
-				{{range .Collection}}<span><a href="/?q=series/{{.}}">{{.}}</a></span>{{end}}
-			</p>
-		{{end}}
-		{{if .Subjects}}
-			<p class="subjects details">Emner:
-				{{range .Subjects}}<span><a href="/?q=subject/{{.}}">{{.}}</a></span>{{end}}
-			</p>
-		{{end}}
+			{{if .Subjects}}
+				<p class="subjects details">Emner:
+					{{range .Subjects}}<span><a href="/?q=subject/{{.}}">{{.}}</a></span>{{end}}
+				</p>
+			{{end}}
+		</div>
 	</div>
 {{end}}
 `))
