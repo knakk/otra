@@ -31,7 +31,7 @@ var indexTmpl = template.Must(template.New("index").Parse(`
 		.collections span+span:before,.subjects span+span:before { content: ' | '}
 		.subtitles small+small:before { content: ' : '}
 		.pagination ul { list-style-type: none; margin: 0; padding: 0 }
-		.pagination li { display: inline-block; float: left; margin: 1.6em }
+		.pagination li { display: inline-block; float: left; margin: 1.2em }
 
 		@media print { body { max-width:none } }
 	</style>

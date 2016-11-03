@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -96,11 +97,14 @@ func queryHandler(db *storage.DB) http.Handler {
 				results.Hits = append(results.Hits, extractRes(p, id))
 			}
 			results.Took = strconv.FormatFloat(time.Since(start).Seconds()*1000, 'f', 1, 64)
-			for i := 1; i < total/10; i++ {
-				if i == 11 {
+			for i := 0; total > 10 && float64(i) < math.Ceil(float64(total)/10); i++ {
+				if len(results.Pages) == 10 {
 					break
 				}
-				results.Pages = append(results.Pages, page{Page: strconv.Itoa(i), Active: i == pageNum})
+				results.Pages = append(results.Pages, page{Page: strconv.Itoa(i + 1), Active: i+1 == pageNum})
+				if i == 0 && pageNum >= 10 {
+					i += (pageNum - 9)
+				}
 			}
 		}
 
