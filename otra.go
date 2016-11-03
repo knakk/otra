@@ -52,18 +52,11 @@ func main() {
 	}
 
 	http.Handle("/autocomplete/", scanHandler(db))
-	http.Handle("/query/", queryHandler(db))
 	http.Handle("/record/", recordHandler(db))
 	http.Handle("/indexes", indexHandler(db))
 	http.Handle("/stats", statsHandler(db))
 	http.Handle("/img/", http.StripPrefix("/img/", http.FileServer(http.Dir("img"))))
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		if _, err := w.Write(page); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
+	http.Handle("/", queryHandler(db))
 
 	h := &harvester{
 		db:           db,

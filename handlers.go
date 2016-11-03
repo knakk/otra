@@ -59,32 +59,53 @@ func indexHandler(db *storage.DB) http.Handler {
 
 func queryHandler(db *storage.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		paths := strings.Split(r.URL.Path, "/")
-		if len(paths) != 4 || paths[3] == "" {
-			http.Error(w, "usage: /query/:index/:query", http.StatusBadRequest)
-			return
-		}
+		var results searchResults
+		if q := r.URL.Query().Get("q"); q != "" {
+			paths := strings.Split(q, "/")
+			if len(paths) != 2 || paths[1] == "" {
+				http.Error(w, "usage: q=index/query", http.StatusBadRequest)
+				return
+			}
 
-		start := time.Now()
-		total, ids, err := db.Query(paths[2], paths[3], 10)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+			offset := 0
+			pageNum := 1
+			if pageP := r.URL.Query().Get("page"); pageP != "" {
+				n, err := strconv.Atoi(pageP)
+				if err != nil || n < 1 {
+					http.Error(w, "page must be an integer <= 1", http.StatusBadRequest)
+					return
+				}
+				pageNum = n
+				offset = (pageNum - 1) * 10
+			}
 
-		results := searchResults{Total: total}
-		for _, id := range ids {
-			p, err := db.Get(id)
+			start := time.Now()
+			total, ids, err := db.Query(paths[0], paths[1], offset, 10)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			results.Hits = append(results.Hits, extractRes(p, id))
+
+			results = searchResults{Total: total, Query: fmt.Sprintf("%s/%s", paths[0], paths[1])}
+			for _, id := range ids {
+				p, err := db.Get(id)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				results.Hits = append(results.Hits, extractRes(p, id))
+			}
+			results.Took = strconv.FormatFloat(time.Since(start).Seconds()*1000, 'f', 1, 64)
+			for i := 1; i < total/10; i++ {
+				if i == 11 {
+					break
+				}
+				results.Pages = append(results.Pages, page{Page: strconv.Itoa(i), Active: i == pageNum})
+			}
 		}
-		results.Took = strconv.FormatFloat(time.Since(start).Seconds()*1000, 'f', 1, 64)
 
 		w.Header().Set("Content-Type", "text/html")
-		if err := hitsTmpl.Execute(w, results); err != nil {
+		if err := indexTmpl.Execute(w, results); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
@@ -119,10 +140,17 @@ func statsHandler(db *storage.DB) http.Handler {
 	})
 }
 
+type page struct {
+	Active bool
+	Page   string
+}
+
 type searchResults struct {
 	Hits  []Hit
 	Total int
+	Query string
 	Took  string
+	Pages []page
 }
 
 type Hit struct {

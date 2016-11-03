@@ -2,7 +2,7 @@ package main
 
 import "html/template"
 
-var page = []byte(`
+var indexTmpl = template.Must(template.New("index").Parse(`
 <!DOCTYPE html>
 <html>
 <head>
@@ -30,6 +30,8 @@ var page = []byte(`
 		.xmlRecord     { display: block; float: right; font-variant: small-caps }
 		.collections span+span:before,.subjects span+span:before { content: ' | '}
 		.subtitles small+small:before { content: ' : '}
+		.pagination ul { list-style-type: none; margin: 0; padding: 0 }
+		.pagination li { display: inline-block; float: left; margin: 1.6em }
 
 		@media print { body { max-width:none } }
 	</style>
@@ -40,12 +42,56 @@ var page = []byte(`
 			<h1>Otra</h1>
 		</header>
 		<section class="relative">
-			<form id="searchForm">
-				<input list="suggestions" id="search" type="text" autocomplete="off" /> <button id="searchButton" type="submit">Søk</button>
+			<form id="searchForm" action="/">
+				<input list="suggestions" id="search" type="text" autocomplete="off" name="q" value={{.Query}} /> <button id="searchButton" type="submit">Søk</button>
 			</form>
 			<datalist id="suggestions"></datalist>
 		</section>
 		<section id="hits">
+			<h4>{{.Total}} hits ({{.Took}}ms)</h4>
+			{{range .Hits}}
+				<div class="record">
+					<div class="record-img">
+						<a target="_blank" href="/img/{{.ID}}"><img src="/img/{{.ID}}/os.jpg"></a>
+					</div>
+					<div class="record-text">
+						<div class="xmlRecord"><a target="_blank" href="/record/{{.ID}}">xml</a> </div>
+						<p><strong>{{.Title}}</strong><br/>
+							<span class="subtitles">{{range .Subtitles}}<small>{{.}}</small>{{end}}</span>
+						</p>
+						<p class="contributors">
+							{{range $role, $agents := .Contributors}}
+								<span>{{$role}} {{range $agents}}<a href="/?q=agent/{{.}}">{{.}}</a> {{end}}</span>
+							{{end}}
+						</p>
+						<p class="details">Utgitt av {{.Publisher}} <a href="/?q=year/{{.PublishedYear}}">{{.PublishedYear}}</a></p>
+						{{if .Collection}}
+							<p class="collections details">Serie:
+								{{range .Collection}}<span><a href="/?q=series/{{.}}">{{.}}</a></span>{{end}}
+							</p>
+						{{end}}
+						{{if .Subjects}}
+							<p class="subjects details">Emner:
+								{{range .Subjects}}<span><a href="/?q=subject/{{.}}">{{.}}</a></span>{{end}}
+							</p>
+						{{end}}
+					</div>
+				</div>
+			{{end}}
+			<div class="pagination">
+				<ul>
+					{{$results := .}}
+					{{range .Pages}}
+						<li>
+							{{if .Active}}
+								<strong>{{.Page}}<strong>
+							{{else}}
+								<a href="/?q={{$results.Query}}&page={{.Page}}">{{.Page}}</a>
+							{{end}}
+						</li>
+					{{end}}
+				<ul>
+			</div>
 		</section>
 	</article>
 	<script>
@@ -85,34 +131,6 @@ var page = []byte(`
 			req.send()
 		}
 
-		function doSearch(event) {
-			var q = document.getElementById('search').value
-			var parts = document.getElementById('search').value.split('/')
-			var index = parts[0]
-			var query = parts[1]
-
-			var req = new XMLHttpRequest()
-			req.open('GET', '/query/'+index+'/'+query, true)
-			req.onload = function(resp) {
-				if (req.status >= 200 && req.status < 400) {
-					document.getElementById('hits').innerHTML = req.responseText
-					if ( '?q='+q !== document.location.search) {
-						// TODO understand why this check is needed to avoid double history entries
-						history.pushState(q, null, '/?q='+q)
-					}
-				} else {
-					console.log(req.status)
-				}
-				return true
-			}
-
-			req.onerror = function() {
-				console.log("connection error")
-			}
-			req.send()
-
-			return event.preventDefault()
-		}
 
 		function keyPressed(event) {
 			if (event.keyCode <= 40 && event.keyCode >= 37) {
@@ -146,36 +164,8 @@ var page = []byte(`
 				console.log("connection error")
 			}
 			req.send()
-
-
-
 		}
 
-		document.getElementById('searchForm').addEventListener('submit', doSearch)
-		document.getElementById('hits').addEventListener('click', function(event) {
-			var href = event.target.getAttribute('href')
-			if (href && href.startsWith('/?q=')) {
-				event.preventDefault()
-				document.getElementById('search').value = decodeURIComponent(href.substring(4))
-				document.getElementById('searchButton').click()
-			}
-		})
-
-
-		if ( window.location.search.startsWith('?q=') ) {
-			document.getElementById('search').value = decodeURIComponent(window.location.search.substring(3))
-			document.getElementById('searchButton').click()
-		}
-
-		history.replaceState(document.getElementById('search').value, null, document.location.href);
-
-		window.addEventListener('popstate', function(event) {
-			if (!event.state || event.state === document.getElementById('search').value) {
-				return
-			}
-			document.getElementById('search').value = event.state
-			document.getElementById('searchButton').click()
-		})
 
 		document.getElementById('search').addEventListener('keyup', keyPressed)
 		getIndexes()
@@ -183,46 +173,13 @@ var page = []byte(`
 	</script>
 </body>
 </html>
-`)
-
-var hitsTmpl = template.Must(template.New("hits").Parse(`
-<h4>{{.Total}} hits ({{.Took}}ms)</h4>
-{{range .Hits}}
-	<div class="record">
-		<div class="record-img">
-			<a target="_blank" href="/img/{{.ID}}"><img src="/img/{{.ID}}/os.jpg"></a>
-		</div>
-		<div class="record-text">
-			<div class="xmlRecord"><a target="_blank" href="/record/{{.ID}}">xml</a> </div>
-			<p><strong>{{.Title}}</strong><br/>
-				<span class="subtitles">{{range .Subtitles}}<small>{{.}}</small>{{end}}</span>
-			</p>
-			<p class="contributors">
-				{{range $role, $agents := .Contributors}}
-					<span>{{$role}} {{range $agents}}<a href="/?q=agent/{{.}}">{{.}}</a> {{end}}</span>
-				{{end}}
-			</p>
-			<p class="details">Utgitt av {{.Publisher}} <a href="/?q=year/{{.PublishedYear}}">{{.PublishedYear}}</a></p>
-			{{if .Collection}}
-				<p class="collections details">Serie:
-					{{range .Collection}}<span><a href="/?q=series/{{.}}">{{.}}</a></span>{{end}}
-				</p>
-			{{end}}
-			{{if .Subjects}}
-				<p class="subjects details">Emner:
-					{{range .Subjects}}<span><a href="/?q=subject/{{.}}">{{.}}</a></span>{{end}}
-				</p>
-			{{end}}
-		</div>
-	</div>
-{{end}}
 `))
 
 var statsTmpl = template.Must(template.New("stats").Parse(`<pre>
 Database
 ========
-path:    {{.Path}}
-size:    {{.Size}}
+path: {{.Path}}
+size: {{.Size}}
 records: {{.Records}}
 
 Indexes

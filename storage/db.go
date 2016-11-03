@@ -339,7 +339,7 @@ func (db *DB) Scan(index, start string, limit int) (res []string, err error) {
 
 // Query performs a query against the given index, returning up to limit matching
 // record IDs, as well as a count of total hits..
-func (db *DB) Query(index, query string, limit int) (total int, res []uint32, err error) {
+func (db *DB) Query(index, query string, offset, limit int) (total int, res []uint32, err error) {
 	err = db.kv.View(func(tx *bolt.Tx) error {
 		bkt := tx.Bucket([]byte("indexes")).Bucket([]byte(index))
 		if bkt == nil {
@@ -357,9 +357,7 @@ func (db *DB) Query(index, query string, limit int) (total int, res []uint32, er
 		}
 		res = hits.ToArray()
 		total = len(res)
-		if len(res) > limit {
-			res = res[:limit]
-		}
+		res = res[min(offset, total):min(offset+limit, total)]
 
 		return nil
 	})
@@ -454,4 +452,18 @@ func u32tob(v uint32) []byte {
 // btou32 converts a 4-byte slice into an uint32.
 func btou32(b []byte) uint32 {
 	return binary.BigEndian.Uint32(b)
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

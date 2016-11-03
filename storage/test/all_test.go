@@ -349,7 +349,7 @@ func TestAll(t *testing.T) {
 			t.Errorf("db.Scan(%s, %s, 10) => %v; want %v", test.idx, test.q, scans, test.scans)
 		}
 
-		n, ids, err := db.Query(test.idx, test.q, 10)
+		n, ids, err := db.Query(test.idx, test.q, 0, 10)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -369,14 +369,14 @@ func TestAll(t *testing.T) {
 	}
 
 	// Verify indexes are updated with updated record
-	_, res, err := db.Query("author", "jensen", 10) // should not match
+	_, res, err := db.Query("author", "jensen", 0, 10) // should not match
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(res, []uint32{ids[1]}) {
 		t.Error("index not updated when with product update")
 	}
-	_, res, err = db.Query("author", "zappa", 10) // should match
+	_, res, err = db.Query("author", "zappa", 0, 10) // should match
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +394,7 @@ func TestAll(t *testing.T) {
 		t.Error("record reference not deleted when product deleted")
 	}
 
-	_, res, err = db.Query("author", "zappa", 10) // should not match anymore
+	_, res, err = db.Query("author", "zappa", 0, 10) // should not match anymore
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -407,7 +407,7 @@ func TestAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, res, err = db.Query("author", "jensen", 10)
+	_, res, err = db.Query("author", "jensen", 0, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
