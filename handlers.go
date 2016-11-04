@@ -106,6 +106,9 @@ func queryHandler(db *storage.DB) http.Handler {
 					i += (pageNum - 9)
 				}
 			}
+			if pageNum >= 10 {
+				results.Pages = append(results.Pages[:1], append([]page{page{Page: "...", Active: true}}, results.Pages[1:]...)...)
+			}
 		}
 
 		w.Header().Set("Content-Type", "text/html")
