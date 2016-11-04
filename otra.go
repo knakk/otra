@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"html"
 	"log"
 	"net/http"
 	"time"
@@ -91,7 +92,7 @@ func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 				if tt.TitleText != nil {
 					res = append(res, storage.IndexEntry{
 						Index: "series",
-						Term:  tt.TitleText.Value,
+						Term:  html.UnescapeString(tt.TitleText.Value),
 					})
 				}
 			}
@@ -102,12 +103,12 @@ func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 		if t.TitleType.Value == list15.DistinctiveTitleBookCoverTitleSerialTitleOnItemSerialContentItemOrReviewedResource {
 			res = append(res, storage.IndexEntry{
 				Index: "title",
-				Term:  t.TitleElement[0].TitleText.Value,
+				Term:  html.UnescapeString(t.TitleElement[0].TitleText.Value),
 			})
 			if t.TitleElement[0].Subtitle != nil {
 				res = append(res, storage.IndexEntry{
 					Index: "title",
-					Term:  t.TitleElement[0].Subtitle.Value,
+					Term:  html.UnescapeString(t.TitleElement[0].Subtitle.Value),
 				})
 			}
 		}
@@ -137,7 +138,7 @@ func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 	for _, p := range p.PublishingDetail.Publisher {
 		res = append(res, storage.IndexEntry{
 			Index: "publisher",
-			Term:  p.PublisherName.Value,
+			Term:  html.UnescapeString(p.PublisherName.Value),
 		})
 		break
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"html"
 	"math"
 	"net/http"
 	"strconv"
@@ -260,5 +261,10 @@ func extractRes(p *onix.Product, id uint32) (hit Hit) {
 		}
 
 	}
+
+	// Unescape escaped xml characters in selected fields:
+	hit.Title = html.UnescapeString(hit.Title)
+	hit.Publisher = html.UnescapeString(hit.Publisher) // aschehoug &amp; co
+
 	return hit
 }
