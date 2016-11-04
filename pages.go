@@ -18,8 +18,6 @@ var indexTmpl = template.Must(template.New("index").Parse(`
 		input          { width: 60% }
 		input, button  { padding: .2em .62em; font-size: 100% }
 		img            { float: left; max-width: 100px }
-		.relative      { position: relative }
-		.hidden        { display: none }
 		p              { margin: 0 0 0.22em 0; }
 		p.details      { font-size: smaller; }
 		section        { margin-bottom: 1em; }
@@ -30,9 +28,9 @@ var indexTmpl = template.Must(template.New("index").Parse(`
 		.xmlRecord     { display: block; float: right; font-variant: small-caps }
 		.collections span+span:before,.subjects span+span:before { content: ' | '}
 		.subtitles small+small:before { content: ' : '}
-		.pagination ul { list-style-type: none; margin: 0; padding: 0 }
-		.pagination li { display: inline-block; float: left; margin: 1.2em }
-
+		.pagination    { text-align: center }
+		.pagination ul { display: inline-block; list-style-type: none; margin: 0; padding: 0; }
+		.pagination li { display: inline-block; float: left; margin: 1em }
 		@media print { body { max-width:none } }
 	</style>
 </head>
@@ -84,13 +82,13 @@ var indexTmpl = template.Must(template.New("index").Parse(`
 					{{range .Pages}}
 						<li>
 							{{if .Active}}
-								<strong>{{.Page}}<strong>
+								<strong>{{.Page}}</strong>
 							{{else}}
 								<a href="/?q={{$results.Query}}&page={{.Page}}">{{.Page}}</a>
 							{{end}}
 						</li>
 					{{end}}
-				<ul>
+				</ul>
 			</div>
 		</section>
 	</article>
