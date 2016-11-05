@@ -21,14 +21,14 @@ var indexTmpl = template.Must(template.New("index").Parse(`
 		p              { margin: 0 0 0.22em 0; }
 		p.details      { font-size: smaller; }
 		section        { margin-bottom: 1em; }
-		.record        { clear: both; border-bottom: 1px dashed #000; margin:0; padding: 0.5em;}
+		.record        { clear: both; border-bottom: 1px solid #888; margin:0; padding: 0.5em;}
 		.record-img    { display: inline-block; width: 20%; float; left; padding-top: 0.5em; }
 		.record-text   { display: inline-block; width: 78%; float; right; vertical-align: top }
 		.record:hover  { background-color: #f0f0f0; }
 		.xmlRecord     { display: block; float: right; font-variant: small-caps }
 		.collections span+span:before,.subjects span+span:before { content: ' | '}
 		.subtitles small+small:before { content: ' : '}
-		.pagination    { text-align: center }
+		.pagination    { text-align: center; }
 		.pagination ul { display: inline-block; list-style-type: none; margin: 0; padding: 0; }
 		.pagination li { display: inline-block; float: left; margin: 1em }
 		@media print { body { max-width:none } }
@@ -41,56 +41,58 @@ var indexTmpl = template.Must(template.New("index").Parse(`
 		</header>
 		<section class="relative">
 			<form id="searchForm" action="/">
-				<input list="suggestions" id="search" type="text" autocomplete="off" name="q" value={{.Query}} /> <button id="searchButton" type="submit">Søk</button>
+				<input list="suggestions" id="search" type="text" autocomplete="off" name="q" value="{{.Query}}" /> <button id="searchButton" type="submit">Søk</button>
 			</form>
 			<datalist id="suggestions"></datalist>
 		</section>
-		<section id="hits">
-			<h4>{{.Total}} hits ({{.Took}}ms)</h4>
-			{{range .Hits}}
-				<div class="record">
-					<div class="record-img">
-						<a target="_blank" href="/img/{{.ID}}"><img src="/img/{{.ID}}/os.jpg"></a>
-					</div>
-					<div class="record-text">
-						<div class="xmlRecord"><a target="_blank" href="/record/{{.ID}}">xml</a> </div>
-						<p><strong>{{.Title}}</strong><br/>
-							<span class="subtitles">{{range .Subtitles}}<small>{{.}}</small>{{end}}</span>
-						</p>
-						<p class="contributors">
-							{{range $role, $agents := .Contributors}}
-								<span>{{$role}} {{range $agents}}<a href="/?q=agent/{{.}}">{{.}}</a> {{end}}</span>
+		{{if .Query}}
+			<section id="hits">
+				<h4>{{.Total}} hits ({{.Took}}ms)</h4>
+				{{range .Hits}}
+					<div class="record">
+						<div class="record-img">
+							<a target="_blank" href="/img/{{.ID}}"><img src="/img/{{.ID}}/os.jpg"></a>
+						</div>
+						<div class="record-text">
+							<div class="xmlRecord"><a target="_blank" href="/record/{{.ID}}">xml</a> </div>
+							<p><strong>{{.Title}}</strong><br/>
+								<span class="subtitles">{{range .Subtitles}}<small>{{.}}</small>{{end}}</span>
+							</p>
+							<p class="contributors">
+								{{range $role, $agents := .Contributors}}
+									<span>{{$role}} {{range $agents}}<a href="/?q=agent/{{.}}">{{.}}</a> {{end}}</span>
+								{{end}}
+							</p>
+							<p class="details">Utgitt av {{.Publisher}} <a href="/?q=year/{{.PublishedYear}}">{{.PublishedYear}}</a></p>
+							{{if .Collection}}
+								<p class="collections details">Serie:
+									{{range .Collection}}<span><a href="/?q=series/{{.}}">{{.}}</a></span>{{end}}
+								</p>
 							{{end}}
-						</p>
-						<p class="details">Utgitt av {{.Publisher}} <a href="/?q=year/{{.PublishedYear}}">{{.PublishedYear}}</a></p>
-						{{if .Collection}}
-							<p class="collections details">Serie:
-								{{range .Collection}}<span><a href="/?q=series/{{.}}">{{.}}</a></span>{{end}}
-							</p>
-						{{end}}
-						{{if .Subjects}}
-							<p class="subjects details">Emner:
-								{{range .Subjects}}<span><a href="/?q=subject/{{.}}">{{.}}</a></span>{{end}}
-							</p>
-						{{end}}
+							{{if .Subjects}}
+								<p class="subjects details">Emner:
+									{{range .Subjects}}<span><a href="/?q=subject/{{.}}">{{.}}</a></span>{{end}}
+								</p>
+							{{end}}
+						</div>
 					</div>
+				{{end}}
+				<div class="pagination">
+					<ul>
+						{{$results := .}}
+						{{range .Pages}}
+							<li>
+								{{if .Active}}
+									<strong>{{.Page}}</strong>
+								{{else}}
+									<a href="/?q={{$results.Query}}&page={{.Page}}">{{.Page}}</a>
+								{{end}}
+							</li>
+						{{end}}
+					</ul>
 				</div>
-			{{end}}
-			<div class="pagination">
-				<ul>
-					{{$results := .}}
-					{{range .Pages}}
-						<li>
-							{{if .Active}}
-								<strong>{{.Page}}</strong>
-							{{else}}
-								<a href="/?q={{$results.Query}}&page={{.Page}}">{{.Page}}</a>
-							{{end}}
-						</li>
-					{{end}}
-				</ul>
-			</div>
-		</section>
+			</section>
+		{{end}}
 	</article>
 	<script>
 		// global state
