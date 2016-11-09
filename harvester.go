@@ -27,6 +27,7 @@ type harvester struct {
 	imageDir     string
 	next         string
 	token        string
+	batchSize    int
 	start        time.Time
 	pollInterval time.Duration
 }
@@ -124,7 +125,7 @@ func (h *harvester) getRecords() (*http.Response, error) {
 		q.Add("after", h.start.Format("20060102150405")) // yyyyMMddHHmmss
 	}
 	q.Add("subscription", "extended")
-	q.Add("pagesize", "1000")
+	q.Add("pagesize", strconv.Itoa(h.batchSize))
 	req.URL.RawQuery = q.Encode()
 
 	return http.DefaultClient.Do(req)

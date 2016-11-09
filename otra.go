@@ -30,6 +30,7 @@ func main() {
 		harvestUser    = flag.String("harvest-user", "", "harvesting auth user")
 		harvestPass    = flag.String("harvest-pass", "", "harvesting auth password")
 		harvestImgDir  = flag.String("harvest-img", "img", "harvesting images to this directory")
+		harvestSize    = flag.Int("harvest-size", 100, "haresting batch size")
 		harvestStart   = flag.Duration("harvest-before", time.Hour*24*29*6, "harvesting start duration before current time")
 		harvestPoll    = flag.Duration("harvest-poll", time.Hour*12, "harvesting polling frquencey")
 	)
@@ -69,6 +70,7 @@ func main() {
 		imageDir:     *harvestImgDir,
 		start:        time.Now().Add(-*harvestStart),
 		pollInterval: *harvestPoll,
+		batchSize:    *harvestSize,
 	}
 	go h.Run()
 
