@@ -51,7 +51,9 @@ var indexTmpl = template.Must(template.New("index").Parse(`
 				{{range .Hits}}
 					<div class="record">
 						<div class="record-img">
-							<a target="_blank" href="/img/{{.ID}}"><img src="/img/{{.ID}}/os.jpg"></a>
+							{{if .HasImage}}
+								<a target="_blank" href="/img/{{.ID}}"><img src="/img/{{.ID}}/os.jpg"></a>
+							{{end}}
 						</div>
 						<div class="record-text">
 							<div class="xmlRecord"><a target="_blank" href="/record/{{.ID}}">xml</a> </div>

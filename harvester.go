@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/xml"
 	"errors"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/RoaringBitmap/roaring"
 	"github.com/knakk/kbp/onix"
 	"github.com/knakk/kbp/onix/codes/list1"
 	"github.com/knakk/otra/storage"
@@ -30,6 +32,7 @@ type harvester struct {
 	batchSize    int
 	start        time.Time
 	pollInterval time.Duration
+	hasImage     *roaring.Bitmap
 }
 
 func (h *harvester) Run() {
@@ -50,6 +53,9 @@ func (h *harvester) Run() {
 			h.next = string(b)
 		}
 	}
+
+	// Reset image map
+	h.hasImage = roaring.New()
 
 	for {
 		res, err := h.getRecords()
@@ -100,9 +106,30 @@ func (h *harvester) Run() {
 			// No more records
 			h.next = ""
 		}
+		// Store which products have images
+		hasImages := roaring.New()
+		b, err := h.db.MetaGet([]byte("hasImage"))
+		if b != nil {
+			if _, err := hasImages.ReadFrom(bytes.NewReader(b)); err != nil {
+				log.Printf("harvester: failed to read image set: %v\nharvester: stopping", err)
+				return
+			}
+		}
+		hasImages = roaring.Or(hasImages, h.hasImage)
+		ib, err := hasImages.MarshalBinary()
+		if err != nil {
+			log.Printf("harvester: failed to save image set: %v\nharvester: stopping", err)
+			return
+		}
+
+		if err := h.db.MetaSet([]byte("hasImage"), ib); err != nil {
+			log.Printf("harvester: failed to save image set: %v\nharvester: stopping", err)
+			return
+		}
+
+		// Store next cursor
 		if err := h.db.MetaSet([]byte("next"), []byte(h.next)); err != nil {
-			log.Printf("harvester: failed to save next cursor: %v", err)
-			log.Println("harvester: exiting")
+			log.Printf("harvester: failed to save next cursor: %v\nharvester: stopping", err)
 			return
 		}
 		res.Body.Close()
@@ -188,6 +215,7 @@ func (h *harvester) handleProduct(p *onix.Product) error {
 			log.Printf("err downloading file %q: %v", link[1], err)
 			continue
 		}
+		h.hasImage.Add(id)
 	}
 	return nil
 }

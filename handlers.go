@@ -1,16 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"html"
+	"log"
 	"math"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/RoaringBitmap/roaring"
 	"github.com/knakk/kbp/onix"
 	"github.com/knakk/kbp/onix/codes"
 	"github.com/knakk/kbp/onix/codes/list15"
@@ -61,6 +64,13 @@ func indexHandler(db *storage.DB) http.Handler {
 
 func queryHandler(db *storage.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hasImages := roaring.New()
+		b, err := db.MetaGet([]byte("hasImage"))
+		if err != nil {
+			log.Printf("failed to load image set: %v", err)
+		} else if _, err := hasImages.ReadFrom(bytes.NewReader(b)); err != nil {
+			log.Printf("failed to load image set %v", err)
+		}
 		var results searchResults
 		if q := r.URL.Query().Get("q"); q != "" {
 			paths := strings.Split(q, "/")
@@ -95,7 +105,9 @@ func queryHandler(db *storage.DB) http.Handler {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
-				results.Hits = append(results.Hits, extractRes(p, id))
+				hit := extractRes(p, id)
+				hit.HasImage = hasImages.Contains(id)
+				results.Hits = append(results.Hits, hit)
 			}
 			results.Took = strconv.FormatFloat(time.Since(start).Seconds()*1000, 'f', 1, 64)
 			for i := 0; total > 10 && float64(i) < math.Ceil(float64(total)/10); i++ {
@@ -175,6 +187,7 @@ type Hit struct {
 	Format           string
 	Publisher        string
 	PublishedYear    string
+	HasImage         bool
 }
 
 func extractRes(p *onix.Product, id uint32) (hit Hit) {
