@@ -43,6 +43,14 @@ func (h *harvester) Run() {
 		os.Mkdir(h.imageDir, 0777)
 	}
 
+	// Load stored next cursor
+	if b, err := h.db.MetaGet([]byte("next")); err == nil {
+		if next := string(b); next != "" {
+			log.Printf("harvester: continuing using next cursor: %q", next)
+			h.next = string(b)
+		}
+	}
+
 	for {
 		res, err := h.getRecords()
 		if err != nil {
@@ -58,10 +66,6 @@ func (h *harvester) Run() {
 		}
 
 		h.next = res.Header.Get("Next")
-		if res.Header.Get("Link") == "" {
-			// No more records
-			h.next = ""
-		}
 
 		dec := xml.NewDecoder(res.Body)
 		n := 0
@@ -92,6 +96,15 @@ func (h *harvester) Run() {
 			}
 		}
 
+		if res.Header.Get("Link") == "" {
+			// No more records
+			h.next = ""
+		}
+		if err := h.db.MetaSet([]byte("next"), []byte(h.next)); err != nil {
+			log.Printf("harvester: failed to save next cursor: %v", err)
+			log.Println("harvester: exiting")
+			return
+		}
 		res.Body.Close()
 		log.Printf("harvester: done processing %d records", n)
 
