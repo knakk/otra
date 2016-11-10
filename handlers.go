@@ -187,6 +187,7 @@ type Hit struct {
 	Format           string
 	Publisher        string
 	PublishedYear    string
+	Desc             []string
 	HasImage         bool
 }
 
@@ -273,6 +274,14 @@ func extractRes(p *onix.Product, id uint32) (hit Hit) {
 			hit.Contributors[roleLabel] = append(hit.Contributors[roleLabel], agentName)
 		}
 
+	}
+
+	if p.CollateralDetail != nil {
+		for _, tc := range p.CollateralDetail.TextContent {
+			for _, t := range tc.Text {
+				hit.Desc = append(hit.Desc, html.UnescapeString(t.Value))
+			}
+		}
 	}
 
 	// Unescape escaped xml characters in selected fields:

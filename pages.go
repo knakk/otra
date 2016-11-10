@@ -31,6 +31,8 @@ var indexTmpl = template.Must(template.New("index").Parse(`
 		.pagination    { text-align: center; }
 		.pagination ul { display: inline-block; list-style-type: none; margin: 0; padding: 0; }
 		.pagination li { display: inline-block; float: left; margin: 1em }
+		.desc          { display: none }
+		.desc:target  { display: block }
 		@media print { body { max-width:none } }
 	</style>
 </head>
@@ -75,6 +77,16 @@ var indexTmpl = template.Must(template.New("index").Parse(`
 								<p class="subjects details">Emner:
 									{{range .Subjects}}<span><a href="/?q=subject/{{.}}">{{.}}</a></span>{{end}}
 								</p>
+							{{end}}
+							{{if .Desc}}
+								<small>
+									<p><a class="show-desc" href="#notes_{{.ID}}">Vis omtaler/noter</a></p>
+									<div class="desc" id="notes_{{.ID}}">
+										{{range .Desc}}
+											<p>{{.}}</p>
+										{{end}}
+									</div>
+								</small>
 							{{end}}
 						</div>
 					</div>
