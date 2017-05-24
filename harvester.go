@@ -179,7 +179,7 @@ func (h *harvester) getToken() error {
 	}
 	res.Body.Close()
 	if res.StatusCode != http.StatusCreated {
-		errors.New(res.Status)
+		return errors.New(res.Status)
 	}
 	h.token = res.Header.Get("Boknett-TGT")
 	return nil
