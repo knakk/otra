@@ -47,7 +47,7 @@ func main() {
 			log.Println("reindexing all records...")
 			start := time.Now()
 			if err := db.ReindexAll(); err != nil {
-				log.Println("reindexing failed: %v", err)
+				log.Printf("reindexing failed: %v", err)
 			}
 			log.Printf("done reindexing %d records in %v", db.Stats().Records, time.Since(start))
 		}()
