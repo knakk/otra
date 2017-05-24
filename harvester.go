@@ -41,7 +41,7 @@ func (h *harvester) Run() {
 		return
 	}
 
-	// Create image directory if it doesn't allready exist
+	// Create image directory if it doesn't already exist
 	if _, err := os.Stat(h.imageDir); os.IsNotExist(err) {
 		os.Mkdir(h.imageDir, 0777)
 	}

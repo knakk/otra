@@ -96,7 +96,7 @@ func (db *DB) get(tx *bolt.Tx, id uint32) (p *onix.Product, err error) {
 }
 
 // Store will persist an onix.Product in the database, returning the ID it
-// was assigned. If there allready exist a prouduct with the same RecordReference,
+// was assigned. If there already exist a prouduct with the same RecordReference,
 // it will be overwritten.
 func (db *DB) Store(p *onix.Product) (id uint32, err error) {
 	err = db.kv.Update(func(tx *bolt.Tx) error {
@@ -105,7 +105,7 @@ func (db *DB) Store(p *onix.Product) (id uint32, err error) {
 
 		ref := tx.Bucket([]byte("ref")).Get([]byte(p.RecordReference.Value))
 		if ref != nil {
-			// There is allready a store product with the same RecordReference
+			// There is already a store product with the same RecordReference
 			idb = ref
 			id = btou32(idb)
 
