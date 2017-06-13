@@ -73,7 +73,13 @@ func (h *harvester) Run() {
 
 		h.next = res.Header.Get("Next")
 
-		dec := xml.NewDecoder(res.Body)
+		// Prosessing the response can take quite some time, so we are copying the
+		// whole response as not to risk the connection beeing reset by peer.
+		var body bytes.Buffer
+		io.Copy(&body, res.Body)
+		res.Body.Close()
+
+		dec := xml.NewDecoder(&body)
 		n := 0
 		for {
 			t, _ := dec.Token()
@@ -85,10 +91,6 @@ func (h *harvester) Run() {
 				if se.Name.Local == "Product" {
 					var p *onix.Product
 					if err := dec.DecodeElement(&p, &se); err != nil {
-						// TODO: getting a few: read: connection reset by peer
-						// sometimes, I guess because we take to long to drain body,
-						// consider retry or reading whole body first, as we are
-						// loosing some records.
 						log.Printf("harvester: xml parsing error: %v", err)
 						continue
 					}
@@ -136,7 +138,7 @@ func (h *harvester) Run() {
 			log.Printf("harvester: failed to save next cursor: %v\nharvester: stopping", err)
 			return
 		}
-		res.Body.Close()
+
 		log.Printf("harvester: done processing %d records", n)
 
 		if h.next != "" {
