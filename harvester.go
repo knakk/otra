@@ -47,7 +47,10 @@ func (h *harvester) Run() {
 	}
 
 	// Load stored next cursor
-	if b, err := h.db.MetaGet([]byte("next")); err == nil {
+	b, err := h.db.MetaGet([]byte("next"))
+	if err != nil {
+		log.Printf("harvester: failed to read stored next cursor: %v", err)
+	} else {
 		if next := string(b); next != "" {
 			log.Printf("harvester: continuing using next cursor: %q", next)
 			h.next = string(b)
