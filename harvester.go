@@ -29,6 +29,7 @@ type harvester struct {
 	imageDir     string
 	next         string
 	token        string
+	ignoreCursor bool
 	batchSize    int
 	start        time.Time
 	pollInterval time.Duration
@@ -46,6 +47,10 @@ func (h *harvester) Run() {
 		os.Mkdir(h.imageDir, 0777)
 	}
 
+	if h.ignoreCursor {
+		log.Println("harvester: ignoring stored cursor")
+		h.db.MetaSet([]byte("next"), []byte(""))
+	}
 	// Load stored next cursor
 	b, err := h.db.MetaGet([]byte("next"))
 	if err != nil {

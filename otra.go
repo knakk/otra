@@ -22,17 +22,18 @@ type ONIXMessage struct {
 
 func main() {
 	var (
-		dbFile         = flag.String("db", "otra.db", "database file")
-		listenAdr      = flag.String("l", ":8765", "listening address")
-		reindex        = flag.Bool("reindex", false, "reindex all records on startup")
-		harvestAdr     = flag.String("harvest-adr", "", "harvesting address")
-		harvestAuthAdr = flag.String("harvest-auth", "", "harvesting auth address")
-		harvestUser    = flag.String("harvest-user", "", "harvesting auth user")
-		harvestPass    = flag.String("harvest-pass", "", "harvesting auth password")
-		harvestImgDir  = flag.String("harvest-img", "img", "harvesting images to this directory")
-		harvestSize    = flag.Int("harvest-size", 100, "haresting batch size")
-		harvestStart   = flag.Duration("harvest-before", time.Hour*24*29*6, "harvesting start duration before current time")
-		harvestPoll    = flag.Duration("harvest-poll", time.Hour*12, "harvesting polling frquencey")
+		dbFile              = flag.String("db", "otra.db", "database file")
+		listenAdr           = flag.String("l", ":8765", "listening address")
+		reindex             = flag.Bool("reindex", false, "reindex all records on startup")
+		harvestAdr          = flag.String("harvest-adr", "", "harvesting address")
+		harvestAuthAdr      = flag.String("harvest-auth", "", "harvesting auth address")
+		harvestUser         = flag.String("harvest-user", "", "harvesting auth user")
+		harvestPass         = flag.String("harvest-pass", "", "harvesting auth password")
+		harvestImgDir       = flag.String("harvest-img", "img", "harvesting images to this directory")
+		harvestSize         = flag.Int("harvest-size", 100, "haresting batch size")
+		harvestStart        = flag.Duration("harvest-before", time.Hour*1, "harvesting start duration before current time")
+		harvestPoll         = flag.Duration("harvest-poll", time.Hour*12, "harvesting polling frquencey")
+		harvestIgnoreCursor = flag.Bool("harvest-ignore-cursor", false, "disregard stored cursor")
 	)
 	flag.Parse()
 
@@ -68,6 +69,7 @@ func main() {
 		username:     *harvestUser,
 		password:     *harvestPass,
 		imageDir:     *harvestImgDir,
+		ignoreCursor: *harvestIgnoreCursor,
 		start:        time.Now().Add(-*harvestStart),
 		pollInterval: *harvestPoll,
 		batchSize:    *harvestSize,
