@@ -237,7 +237,7 @@ func extractRes(p *onix.Product, id uint32) (hit Hit) {
 		break
 	}
 	for _, d := range p.PublishingDetail.PublishingDate {
-		if d.PublishingDateRole.Value == list163.PublicationDate {
+		if d.PublishingDateRole.Value == list163.LastReprintDate {
 			// TODO research other date roles
 			hit.PublishedYear = d.Date.Value
 			break

@@ -148,7 +148,7 @@ func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 		break
 	}
 	for _, d := range p.PublishingDetail.PublishingDate {
-		if d.PublishingDateRole.Value == list163.PublicationDate {
+		if d.PublishingDateRole.Value == list163.LastReprintDate {
 			res = append(res, storage.IndexEntry{
 				Index: "year",
 				Term:  d.Date.Value,
