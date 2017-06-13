@@ -109,6 +109,10 @@ func (h *harvester) Run() {
 		// Store which products have images
 		hasImages := roaring.New()
 		b, err := h.db.MetaGet([]byte("hasImage"))
+		if err != nil && err != storage.ErrNotFound {
+			log.Printf("harvester: failed to read image set: %v\nharvester: stopping", err)
+			return
+		}
 		if b != nil {
 			if _, err := hasImages.ReadFrom(bytes.NewReader(b)); err != nil {
 				log.Printf("harvester: failed to read image set: %v\nharvester: stopping", err)
