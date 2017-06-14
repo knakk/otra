@@ -84,7 +84,7 @@ func queryHandler(db *storage.DB) http.Handler {
 			if pageP := r.URL.Query().Get("page"); pageP != "" {
 				n, err := strconv.Atoi(pageP)
 				if err != nil || n < 1 {
-					http.Error(w, "page must be an integer <= 1", http.StatusBadRequest)
+					http.Error(w, "page must be an integer >= 1", http.StatusBadRequest)
 					return
 				}
 				pageNum = n
