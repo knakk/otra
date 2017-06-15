@@ -355,10 +355,14 @@ func (db *DB) Query(index, query string, offset, limit int) (total int, res []ui
 		if _, err := hits.ReadFrom(bytes.NewReader(bo)); err != nil {
 			return err
 		}
+
+		res = hits.ToArray()
+		total = len(res)
+
 		// We are reversing the results to get recent products first,
 		// as they are sorted in insertion order
-		res = reverse(hits.ToArray())
-		total = len(res)
+		reverse(res)
+
 		res = res[min(offset, total):min(offset+limit, total)]
 
 		return nil
@@ -470,9 +474,8 @@ func min(a, b int) int {
 	return b
 }
 
-func reverse(numbers []uint32) []uint32 {
+func reverse(numbers []uint32) {
 	for i, j := 0, len(numbers)-1; i < j; i, j = i+1, j-1 {
 		numbers[i], numbers[j] = numbers[j], numbers[i]
 	}
-	return numbers
 }
