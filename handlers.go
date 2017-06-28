@@ -26,6 +26,11 @@ import (
 	"github.com/knakk/otra/storage"
 )
 
+var (
+	xmlHeader = []byte(`<?xml version="1.0" encoding="utf-8"?><ONIXMessage release="3.0"><Header><Sender><SenderName>Otra</SenderName></Sender></Header>`)
+	xmlFooter = []byte(`</ONIXMessage>`)
+)
+
 func recordHandler(db *storage.DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		paths := strings.Split(r.URL.Path, "/")
@@ -127,6 +132,45 @@ func queryHandler(db *storage.DB) http.Handler {
 		w.Header().Set("Content-Type", "text/html")
 		if err := indexTmpl.Execute(w, results); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+}
+
+func xmlQueryHandler(db *storage.DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		element := r.PostFormValue("element")
+		query := r.PostFormValue("query")
+		if element == "" || query == "" {
+			http.Error(w, "required parameters: element, entry", http.StatusBadRequest)
+			return
+		}
+
+		_, ids, err := db.Query(element, query, 0, 10)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/xml")
+		if _, err := w.Write(xmlHeader); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		enc := xml.NewEncoder(w)
+		for _, id := range ids {
+			rec, err := db.Get(id)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if err := enc.Encode(&rec); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		if _, err := w.Write(xmlFooter); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	})
 }

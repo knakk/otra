@@ -60,6 +60,7 @@ func main() {
 	http.Handle("/stats", statsHandler(db))
 	http.Handle("/img/", http.StripPrefix("/img/", http.FileServer(http.Dir(*harvestImgDir))))
 	http.Handle("/favicon.ico", http.NotFoundHandler())
+	http.Handle("/xmlquery", xmlQueryHandler(db))
 	http.Handle("/", queryHandler(db))
 
 	h := &harvester{

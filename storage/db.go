@@ -360,7 +360,7 @@ func (db *DB) Query(index, query string, offset, limit int) (total int, res []ui
 		total = len(res)
 
 		// We are reversing the results to get recent products first,
-		// as they are sorted in insertion order
+		// as they are stored and thus sorted in insertion order
 		reverse(res)
 
 		res = res[min(offset, total):min(offset+limit, total)]
