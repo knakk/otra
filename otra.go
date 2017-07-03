@@ -59,6 +59,7 @@ func main() {
 	http.Handle("/indexes", indexHandler(db))
 	http.Handle("/stats", statsHandler(db))
 	http.Handle("/img/", http.StripPrefix("/img/", http.FileServer(http.Dir(*harvestImgDir))))
+	http.Handle("/imgbyisbn/", imgByIsbnHandler(db, *harvestImgDir))
 	http.Handle("/favicon.ico", http.NotFoundHandler())
 	http.Handle("/xmlquery", xmlQueryHandler(db))
 	http.Handle("/", queryHandler(db))

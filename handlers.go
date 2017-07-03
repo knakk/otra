@@ -204,6 +204,29 @@ func statsHandler(db *storage.DB) http.Handler {
 	})
 }
 
+func imgByIsbnHandler(db *storage.DB, imgdir string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths := strings.Split(r.URL.Path, "/")
+		if len(paths) != 3 || paths[2] == "" {
+			http.Error(w, "usage: /imgbyisbn/:isbn", http.StatusBadRequest)
+			return
+		}
+
+		_, ids, err := db.Query("isbn", paths[2], 0, 1)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if len(ids) != 1 {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		imgPath := fmt.Sprintf("%s/%d/org.jpg", imgdir, ids[0])
+		http.ServeFile(w, r, imgPath)
+	})
+}
+
 type page struct {
 	Active bool
 	Page   string
