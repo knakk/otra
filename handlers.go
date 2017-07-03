@@ -219,7 +219,7 @@ func imgByIsbnHandler(db *storage.DB, imgdir string) http.Handler {
 		}
 
 		if len(ids) != 1 {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			http.NotFound(w, r)
 			return
 		}
 		imgPath := fmt.Sprintf("%s/%d/org.jpg", imgdir, ids[0])
