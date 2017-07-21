@@ -33,6 +33,7 @@ var indexTmpl = template.Must(template.New("index").Parse(`
 		.pagination li { display: inline-block; float: left; margin: 1em }
 		.desc          { display: none }
 		.desc:target  { display: block }
+		.grey          { font-size: smaller; color: #888 }
 		@media print { body { max-width:none } }
 	</style>
 </head>
@@ -59,7 +60,7 @@ var indexTmpl = template.Must(template.New("index").Parse(`
 						</div>
 						<div class="record-text">
 							<div class="xmlRecord"><a target="_blank" href="/record/{{.ID}}">xml</a> </div>
-							<p><strong>{{.Title}}</strong><br/>
+							<p><strong>{{.Title}}</strong> <span class="grey">{{.Format}}</span><br/>
 								<span class="subtitles">{{range .Subtitles}}<small>{{.}}</small>{{end}}</span>
 							</p>
 							<p class="contributors">
