@@ -190,6 +190,8 @@ func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 				roleIndex = "author"
 			case "A03":
 				roleIndex = "scriptwriter"
+			case "A05":
+				roleIndex = "lyricist"
 			case "A06":
 				roleIndex = "composer"
 			case "A09":
