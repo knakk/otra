@@ -60,6 +60,7 @@ func main() {
 	http.Handle("/stats", statsHandler(db))
 	http.Handle("/img/", http.StripPrefix("/img/", http.FileServer(http.Dir(*harvestImgDir))))
 	http.Handle("/imgbyisbn/", imgByIsbnHandler(db, *harvestImgDir))
+	http.Handle("/imgbyean/", imgByEANHandler(db, *harvestImgDir))
 	http.Handle("/favicon.ico", http.NotFoundHandler())
 	http.Handle("/xmlquery", xmlQueryHandler(db))
 	http.Handle("/", queryHandler(db))
@@ -81,11 +82,18 @@ func main() {
 	log.Printf("Starting otra server. Listening at %s", *listenAdr)
 	log.Fatal(http.ListenAndServe(*listenAdr, nil))
 }
+
 func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 	for _, id := range p.ProductIdentifier {
-		if id.ProductIDType.Value == list5.ISBN13 {
+		switch id.ProductIDType.Value {
+		case list5.ISBN13:
 			res = append(res, storage.IndexEntry{
 				Index: "isbn",
+				Term:  id.IDValue.Value,
+			})
+		case list5.GTIN13:
+			res = append(res, storage.IndexEntry{
+				Index: "ean",
 				Term:  id.IDValue.Value,
 			})
 		}
