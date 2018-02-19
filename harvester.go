@@ -152,6 +152,7 @@ func (h *harvester) Run() {
 		if h.next != "" {
 			continue
 		}
+		h.start = time.Now()
 
 		log.Printf("harvester: sleeping %v before attempting to harvest again", h.pollInterval)
 		time.Sleep(h.pollInterval)
