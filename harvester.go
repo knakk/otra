@@ -69,6 +69,9 @@ func (h *harvester) Run() {
 		res, err := h.getRecords()
 		if err != nil {
 			log.Printf("harvester: failed to get records: %v", err)
+			log.Println("trying again in 10 seconds")
+			time.Sleep(10 * time.Second)
+			continue
 		}
 
 		if res.StatusCode != http.StatusOK {
