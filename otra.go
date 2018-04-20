@@ -150,12 +150,22 @@ func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 			}
 		}*/
 
-	for _, p := range p.PublishingDetail.Publisher {
-		res = append(res, storage.IndexEntry{
-			Index: "publisher",
-			Term:  html.UnescapeString(p.PublisherName.Value),
-		})
-		break
+	if len(p.PublishingDetail.Imprint) > 0 {
+		for _, imp := range p.PublishingDetail.Imprint {
+			res = append(res, storage.IndexEntry{
+				Index: "publisher",
+				Term:  html.UnescapeString(imp.ImprintName.Value),
+			})
+			break
+		}
+	} else {
+		for _, p := range p.PublishingDetail.Publisher {
+			res = append(res, storage.IndexEntry{
+				Index: "publisher",
+				Term:  html.UnescapeString(p.PublisherName.Value),
+			})
+			break
+		}
 	}
 	for _, d := range p.PublishingDetail.PublishingDate {
 		if d.PublishingDateRole.Value == list163.LastReprintDate {
