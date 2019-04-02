@@ -238,6 +238,12 @@ func indexFn(p *onix.Product) (res []storage.IndexEntry) {
 				roleIndex = "solist"
 			case "E07":
 				roleIndex = "reader"
+			/* TODO:
+			roleA07: 15
+			roleB20: 5
+			roleE05: 7
+			roleZ02: 32
+			*/
 			default:
 				roleIndex = "role" + role.Value
 			}
