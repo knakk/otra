@@ -20,6 +20,8 @@ type ONIXMessage struct {
 	Product []*onix.Product
 }
 
+var harvestStart time.Duration
+
 func main() {
 	var (
 		dbFile              = flag.String("db", "otra.db", "database file")
@@ -31,10 +33,10 @@ func main() {
 		harvestPass         = flag.String("harvest-pass", "", "harvesting auth password")
 		harvestImgDir       = flag.String("harvest-img", "img", "harvesting images to this directory")
 		harvestSize         = flag.Int("harvest-size", 100, "haresting batch size")
-		harvestStart        = flag.Duration("harvest-before", time.Hour*1, "harvesting start duration before current time")
 		harvestPoll         = flag.Duration("harvest-poll", time.Hour*12, "harvesting polling frquencey")
 		harvestIgnoreCursor = flag.Bool("harvest-ignore-cursor", false, "disregard stored cursor")
 	)
+	flag.DurationVar(&harvestStart, "harvest-before", time.Hour*1, "harvesting start duration before current time")
 	flag.Parse()
 
 	db, err := storage.Open(*dbFile, indexFn)
@@ -73,7 +75,7 @@ func main() {
 		password:     *harvestPass,
 		imageDir:     *harvestImgDir,
 		ignoreCursor: *harvestIgnoreCursor,
-		start:        time.Now().Add(-*harvestStart),
+		start:        time.Now().Add(-harvestStart),
 		pollInterval: *harvestPoll,
 		batchSize:    *harvestSize,
 	}

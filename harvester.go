@@ -78,7 +78,9 @@ func (h *harvester) Run() {
 			log.Printf("harvester: request failed: %v", res.Status)
 			b, _ := ioutil.ReadAll(res.Body)
 			log.Println(string(b))
-			h.token = "" // to obtain a new token in next loop iteration
+			h.token = ""                            // to obtain a new token in next loop iteration
+			time.Sleep(30 * time.Second)            // as not to bomb server on repeating failure
+			h.start = time.Now().Add(-harvestStart) // to fix potential date daylight transition errro
 			continue
 		}
 
